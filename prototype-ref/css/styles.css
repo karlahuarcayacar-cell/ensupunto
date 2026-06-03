@@ -1,0 +1,280 @@
+/* Global variables & reset for En su punto SAC */
+
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+
+:root {
+  /* Colors */
+  --bg-primary: #0a0e17; /* hsl(222, 40%, 6%) */
+  --bg-secondary: #131b2e; /* hsl(222, 41%, 13%) */
+  --bg-tertiary: #1e2942; /* hsl(222, 37%, 19%) */
+  
+  --accent: #ff6600; /* hsl(24, 100%, 50%) */
+  --accent-hover: #e05300;
+  --accent-rgb: 255, 102, 0;
+  
+  --text-primary: #f8fafc; /* hsl(210, 40%, 98%) */
+  --text-secondary: #94a3b8; /* hsl(215, 25%, 72%) */
+  --text-muted: #64748b; /* hsl(215, 16%, 47%) */
+  
+  --border-color: #2e3d60; /* hsl(222, 35%, 28%) */
+  --border-focus: #ff6600;
+  
+  /* Status Colors */
+  --status-free: #10b981; /* Green */
+  --status-waiting: #f59e0b; /* Yellow/Amber */
+  --status-cooking: #ef4444; /* Red/Orange */
+  --status-eating: #3b82f6; /* Blue */
+  --status-ready: #8b5cf6; /* Purple */
+  --status-paid: #10b981; /* Green */
+  
+  /* Fonts */
+  --font-title: 'Outfit', sans-serif;
+  --font-body: 'Plus Jakarta Sans', sans-serif;
+
+  /* Spacing & Borders */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 8px 16px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 16px 32px rgba(0, 0, 0, 0.35);
+  
+  /* Layout */
+  --nav-height: 70px;
+  --uc-panel-width: 380px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.5;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-title);
+  font-weight: 600;
+}
+
+/* Glassmorphism utility */
+.glass {
+  background: rgba(19, 27, 46, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-card {
+  background: rgba(30, 41, 66, 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  box-shadow: var(--shadow-md);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+  border-color: rgba(255, 102, 0, 0.3);
+  box-shadow: 0 8px 24px rgba(255, 102, 0, 0.08);
+  transform: translateY(-2px);
+}
+
+/* Main Layout */
+.app-container {
+  display: flex;
+  flex: 1;
+  height: calc(100vh - var(--nav-height));
+  position: relative;
+  overflow: hidden;
+}
+
+.main-content {
+  flex: 1;
+  padding: 30px;
+  overflow-y: auto;
+  transition: padding-right 0.3s ease;
+  height: 100%;
+}
+
+.main-content.panel-open {
+  padding-right: calc(var(--uc-panel-width) + 30px);
+}
+
+/* Navigation bar */
+.top-navbar {
+  height: var(--nav-height);
+  background-color: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 30px;
+  z-index: 100;
+  box-shadow: var(--shadow-sm);
+}
+
+.brand-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-logo {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, var(--accent), #ff9900);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 800;
+  font-size: 1.25rem;
+  font-family: var(--font-title);
+  box-shadow: 0 0 15px rgba(255, 102, 0, 0.4);
+}
+
+.brand-name {
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  background: linear-gradient(to right, #ffffff, #ffb88c);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.brand-tagline {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.role-switcher-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--bg-primary);
+  padding: 6px;
+  border-radius: 50px;
+  border: 1px solid var(--border-color);
+}
+
+.role-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 50px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.role-btn:hover {
+  color: var(--text-primary);
+  background-color: var(--bg-tertiary);
+}
+
+.role-btn.active {
+  background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+  color: white;
+  box-shadow: 0 4px 10px rgba(255, 102, 0, 0.25);
+}
+
+.user-profile-section {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.profile-info {
+  text-align: right;
+  font-size: 0.85rem;
+}
+
+.profile-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.profile-role {
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.logout-btn {
+  background-color: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.logout-btn:hover {
+  border-color: #ef4444;
+  color: #ef4444;
+  background-color: rgba(239, 68, 68, 0.05);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-glow {
+  0% { box-shadow: 0 0 0 0 rgba(255, 102, 0, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(255, 102, 0, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 102, 0, 0); }
+}
+
+.fade-in {
+  animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}

@@ -4,8 +4,11 @@ package com.ensupunto.entity;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -31,13 +34,14 @@ import lombok.Setter;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Pedido {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "mesa_id", nullable = false)
     private Mesa mesa;
 
@@ -65,10 +69,12 @@ public class Pedido {
     private LocalDateTime fechaPago;
 
     // Relación One-To-Many hacia los platos que componen el pedido
+    @Builder.Default
     @OneToMany(mappedBy = "pedido", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<DetallePedido> detalles;
+    private List<DetallePedido> detalles = new ArrayList<>();
 
     // Relación One-To-Many hacia los pagos fraccionados si el cliente divide la cuenta
+    @JsonIgnore
     @OneToMany(mappedBy = "pedido", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PagoFraccionado> pagosFraccionados;
 

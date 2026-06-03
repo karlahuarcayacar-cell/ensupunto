@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Pedidos - En su punto SAC (Análisis de Casos de Uso)</title>
+  <meta name="description" content="Prototipo interactivo para el mapeo de Casos de Uso (CU) del restaurante En su punto SAC.">
+  
+  <!-- CSS Stylesheets -->
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/roles.css">
+  <link rel="stylesheet" href="css/use_cases.css">
+</head>
+<body>
+
+  <!-- ========================================== -->
+  <!-- 1. PANTALLA DE LOGIN                       -->
+  <!-- ========================================== -->
+  <div id="login-screen" class="login-wrapper">
+    <div class="login-card">
+      <div class="login-logo">🔥</div>
+      <h1 class="login-title">En su punto SAC</h1>
+      <p class="login-subtitle">Sistema Integrado de Pedidos Presenciales</p>
+      
+      <form id="login-form">
+        <div class="form-group">
+          <label for="login-username">Usuario</label>
+          <input type="text" id="login-username" class="form-control" placeholder="Ej: mesero, chef, admin..." required autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label for="login-password">Contraseña</label>
+          <input type="password" id="login-password" class="form-control" value="123" placeholder="••••••••" required autocomplete="current-password">
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">
+          Ingresar al Sistema
+        </button>
+      </form>
+      
+      <div class="quick-access-title">Acceso Rápido para Simulación</div>
+      <div class="quick-access-grid">
+        <button class="quick-role-btn" data-username="mesero">
+          <span class="role-icon">🧑‍🍳</span>
+          <span class="role-label">Mesero</span>
+          <span class="role-user">juan.perez</span>
+        </button>
+        <button class="quick-role-btn" data-username="chef">
+          <span class="role-icon">🍳</span>
+          <span class="role-label">Chef (Cocina)</span>
+          <span class="role-user">carlos.ruiz</span>
+        </button>
+        <button class="quick-role-btn" data-username="cajero">
+          <span class="role-icon">💰</span>
+          <span class="role-label">Cajero</span>
+          <span class="role-user">maria.gomez</span>
+        </button>
+        <button class="quick-role-btn" data-username="admin">
+          <span class="role-icon">🔑</span>
+          <span class="role-label">Administrador</span>
+          <span class="role-user">ana.martinez</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 2. NAVEGACIÓN Y PANEL DE LA APLICACIÓN     -->
+  <!-- ========================================== -->
+  <div id="app-screen" class="fade-in" style="display: none; height: 100%;">
+    
+    <!-- Top Navigation Bar -->
+    <header class="top-navbar">
+      <div class="brand-section">
+        <div class="brand-logo">🔥</div>
+        <div>
+          <h2 class="brand-name">En su punto SAC</h2>
+          <span class="brand-tagline">Prototipo de Casos de Uso</span>
+        </div>
+      </div>
+      
+      <!-- Role Quick-Switcher for simulation purposes -->
+      <div class="role-switcher-container">
+        <button class="role-btn" data-role="mesero">
+          <span>🧑‍🍳</span> Mesero
+        </button>
+        <button class="role-btn" data-role="chef">
+          <span>🍳</span> Chef
+        </button>
+        <button class="role-btn" data-role="cajero">
+          <span>💰</span> Cajero
+        </button>
+        <button class="role-btn" data-role="admin">
+          <span>🔑</span> Admin
+        </button>
+      </div>
+      
+      <!-- Profile Info & Logout -->
+      <div class="user-profile-section">
+        <div class="profile-info">
+          <div class="profile-name" id="session-name">Usuario Nombre</div>
+          <div class="profile-role" id="session-role">Rol</div>
+        </div>
+        <button class="logout-btn" id="logout-btn" title="Cerrar Sesión">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Workspace Container -->
+    <div class="app-container">
+      
+      <!-- Main Content Viewport -->
+      <main class="main-content" id="main-viewport">
+        <!-- Dynanically filled by role JavaScript modules -->
+      </main>
+
+      <!-- ========================================== -->
+      <!-- 3. PANEL ANALÍTICO DE CASOS DE USO (UC)    -->
+      <!-- ========================================== -->
+      <aside class="uc-panel open" id="use-case-panel">
+        
+        <!-- Toggle Arrow Button -->
+        <button class="uc-toggle-btn" id="uc-panel-toggle" title="Contraer/Expandir Analizador">
+          <span class="toggle-arrow">❯</span>
+          <span class="toggle-text">Casos de Uso</span>
+        </button>
+        
+        <!-- Header -->
+        <div class="uc-header">
+          <span class="uc-header-icon">🔎</span>
+          <h3>Analizador de CUs</h3>
+        </div>
+        
+        <!-- Body -->
+        <div class="uc-body">
+          
+          <!-- Selected Use Case Meta -->
+          <div class="uc-info-card" id="uc-info-card">
+            <h4 class="uc-meta-title" id="uc-title">CU-XX: Cargar caso de uso</h4>
+            
+            <div class="uc-meta-item">
+              <span class="uc-meta-label">Actor Principal</span>
+              <span class="uc-meta-value" id="uc-actor">-</span>
+            </div>
+            
+            <div class="uc-meta-item">
+              <span class="uc-meta-label">Precondiciones</span>
+              <span class="uc-meta-value" id="uc-preconditions">-</span>
+            </div>
+            
+            <div class="uc-meta-item">
+              <span class="uc-meta-label">Postcondiciones</span>
+              <span class="uc-meta-value" id="uc-postconditions">-</span>
+            </div>
+          </div>
+          
+          <!-- Steps Timeline Tracker (ECU) -->
+          <div class="uc-steps-container">
+            <h5 class="uc-section-title">Flujo del Escenario (ECU)</h5>
+            <div id="uc-steps-list">
+              <!-- Steps loaded dynamically -->
+            </div>
+          </div>
+          
+        </div>
+
+        <!-- Simulation Audit Log -->
+        <div class="uc-log-section">
+          <div class="uc-log-header">
+            <h5 class="uc-section-title" style="margin-bottom: 0;">Logs de la Simulación</h5>
+            <button class="clear-log-btn" id="clear-log-btn">Limpiar</button>
+          </div>
+          <div class="uc-log-container" id="uc-log-container">
+            <!-- Simulated system event log entries -->
+          </div>
+        </div>
+
+      </aside>
+
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 4. MODALES GLOBALES                        -->
+  <!-- ========================================== -->
+  
+  <!-- General Confirmation/Action Modal -->
+  <div class="modal-overlay" id="general-modal">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-title">Título del Modal</h3>
+        <button class="modal-close" data-close-modal>&times;</button>
+      </div>
+      <div class="modal-body" id="modal-body">
+        <!-- Dynamically populated body -->
+      </div>
+      <div class="modal-footer" id="modal-footer">
+        <!-- Dynamically populated footer buttons -->
+      </div>
+    </div>
+  </div>
+
+  <!-- JavaScript Files -->
+  <script src="js/state.js"></script>
+  <script src="js/use_cases_data.js"></script>
+  <script src="js/ui_renderer.js"></script>
+  <script src="js/role_mesero.js"></script>
+  <script src="js/role_chef.js"></script>
+  <script src="js/role_cajero.js"></script>
+  <script src="js/role_admin.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

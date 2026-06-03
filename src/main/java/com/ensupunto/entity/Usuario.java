@@ -2,6 +2,8 @@ package com.ensupunto.entity;
 
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -20,6 +22,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Usuario {
 	
 	@Id
@@ -35,6 +38,7 @@ public class Usuario {
     @Column(name = "nombre_usuario", nullable = false, unique = true, length = 50)
     private String nombreUsuario;
 
+    @JsonIgnore
     @Column(name = "contrasena", nullable = false, length = 255)
     private String contrasena;
 

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="head(title)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${title} + ' - En su punto SAC'">En su punto SAC</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <style>
+        .top-navbar {
+            width: 100%;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1000;
+            height: 70px;
+            background-color: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 30px;
+            box-shadow: var(--shadow-sm);
+        }
+        .main-content {
+            margin-top: 70px;
+            height: calc(100vh - 70px);
+        }
+        .role-badge {
+            padding: 4px 10px;
+            border-radius: 50px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: white;
+        }
+        .role-badge.cajero { background-color: #10b981; } /* Green */
+        .role-badge.mesero { background-color: #f59e0b; } /* Orange */
+        .role-badge.chef { background-color: #ef4444; } /* Red */
+        .role-badge.admin { background-color: #8b5cf6; } /* Purple */
+        
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: var(--bg-tertiary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            border: 2px solid var(--border-color);
+        }
+    </style>
+</head>
+<body>
+    <header th:fragment="navbar" class="top-navbar">
+        <div class="brand-section">
+            <div class="brand-logo" style="background: transparent; box-shadow: none; font-size: 1.5rem;">🔥</div>
+            <div>
+                <div class="brand-name" style="font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 1.5rem;">En su punto SAC</div>
+                <div class="brand-tagline">Sistema Premium</div>
+            </div>
+        </div>
+        
+        <div class="user-profile-section" th:if="${usuario != null}">
+            <div class="avatar" th:text="${#strings.substring(usuario.nombre,0,1)}">U</div>
+            <div class="profile-info" style="text-align: right; margin-right: 10px;">
+                <div class="profile-name" th:text="${usuario.nombre}">Usuario</div>
+            </div>
+            <span class="role-badge" th:classappend="${usuario.rol}" th:text="${usuario.rol}">Rol</span>
+            <a th:href="@{/logout}" class="logout-btn" title="Cerrar Sesión" style="margin-left: 10px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+            </a>
+        </div>
+    </header>
+</body>
+</html>

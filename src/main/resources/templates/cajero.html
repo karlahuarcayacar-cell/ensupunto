@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/header :: head('Cajero Dashboard')}"></head>
+<body>
+    <div class="app-container">
+        <header th:replace="~{fragments/header :: navbar}"></header>
+        
+        <main class="main-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">  
+                <div>
+                    <h1 style="font-size: 1.8rem; color: white;">Punto de Cobro</h1>
+                    <p style="color: var(--text-secondary); font-size: 0.9rem;">Selecciona una mesa para procesar el pago.</p>
+                </div>
+            </div>
+            
+            <div class="cashier-layout">
+                <div class="cashier-tables-view">
+                    <div class="tables-grid">
+                        <div th:each="mesa : ${mesas}" class="glass-card table-card" th:classappend="'state-' + ${mesa.estado}" th:data-id="${mesa.id}" onclick="loadPedido(this)">
+                            <div class="table-header">
+                                <span class="table-number" th:text="${mesa.nombre}">Mesa</span>
+                                <span class="badge" th:classappend="${mesa.estado == 'libre' ? 'badge-free' : (mesa.estado == 'esperando_comida' ? 'badge-waiting' : (mesa.estado == 'comiendo' ? 'badge-eating' : 'badge-cooking'))}" 
+                                      th:text="${mesa.estado == 'libre' ? 'Libre' : mesa.estado}">Estado</span>
+                            </div>
+                            <div class="table-footer-actions">
+                                <button th:if="${mesa.estado != 'libre'}" class="btn btn-primary btn-sm">Cobrar Cuenta</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-card cashier-bill-panel" id="bill-panel" style="display:none;">
+                    <h3 style="font-size: 1.2rem; margin-bottom: 15px;" id="bill-title">Cuenta</h3>
+                    
+                    <div style="flex:1; overflow-y:auto; margin-bottom:15px; border-bottom:1px solid #333; padding-bottom:10px;" id="bill-items">
+                    </div>
+                    
+                    <h2 style="color:var(--accent); font-size:1.8rem; text-align:right; margin-bottom:15px;" id="bill-total">S/ 0.00</h2>
+                    
+                    <div class="payment-method-selector">
+                        <button class="payment-method-btn active" onclick="setMethod('efectivo')">Efectivo</button>
+                        <button class="payment-method-btn" onclick="setMethod('tarjeta')">Tarjeta</button>
+                        <button class="payment-method-btn" onclick="setMethod('yape')">Yape/Plin</button>
+                    </div>
+                    
+                    <div id="cash-calculator" style="margin-bottom:15px; padding:10px; background:var(--bg-tertiary); border-radius:8px;">
+                        <label style="font-size:0.85rem; color:var(--text-secondary);">Efectivo Recibido (S/):</label>
+                        <input type="number" id="cash-received" class="form-control" style="width:100%; margin-top:5px;" placeholder="0.00" oninput="calculateChange()">
+                        <div style="margin-top:10px; display:flex; justify-content:space-between; font-weight:bold;">
+                            <span>Vuelto:</span>
+                            <span id="cash-change" style="color:#10b981;">S/ 0.00</span>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-success" style="width:100%; padding:15px; font-size:1.1rem; margin-bottom:10px;" onclick="processPayment()">💰 Cobrar Total</button>
+                    <button class="btn btn-secondary" style="width:100%; padding:10px;" onclick="promptDividir()">⚖️ Dividir Cuenta</button>
+                </div>
+
+                <!-- Split Payment List Panel -->
+                <div class="glass-card cashier-bill-panel" id="split-panel" style="display:none;">
+                    <h3 style="font-size: 1.2rem; margin-bottom: 15px;">Clientes (Cuenta Dividida)</h3>
+                    <div id="split-list" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:10px;"></div>
+                    <div style="margin-top:15px; border-top:1px solid #333; padding-top:10px;">
+                        <div style="display:flex; justify-content:space-between; color:var(--text-secondary);">
+                            <span>Saldo Pendiente:</span>
+                            <span id="split-pending" style="color:var(--accent); font-weight:bold;">S/ 0.00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <th:block th:replace="~{fragments/scripts :: commonScripts}"></th:block>
+
+    <script th:inline="javascript">
+        let currentPedidoId = null;
+        let selectedMethod = 'efectivo';
+        let currentTotal = 0;
+
+        function calculateChange() {
+            if(selectedMethod !== 'efectivo') return;
+            const received = parseFloat(document.getElementById('cash-received').value) || 0;
+            const change = received - currentTotal;
+            document.getElementById('cash-change').innerText = 'S/ ' + (change > 0 ? change.toFixed(2) : '0.00');
+            document.getElementById('cash-change').style.color = change >= 0 ? '#10b981' : '#ef4444';
+        }
+
+        function setMethod(method) {
+            selectedMethod = method;
+            document.querySelectorAll('.payment-method-btn').forEach(b => b.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+            
+            document.getElementById('cash-calculator').style.display = method === 'efectivo' ? 'block' : 'none';
+        }
+
+        function showReceipt(boletaNum, total) {
+            let body = `
+                <div style="text-align:center; font-family:monospace; color:var(--text-secondary);">
+                    <h2 style="color:white; margin-bottom:10px;">EN SU PUNTO SAC</h2>
+                    <p>RUC: 20123456789</p>
+                    <p>Av. Principal 123, Lima</p>
+                    <hr style="border-color:#333; margin:10px 0;">
+                    <h3 style="color:white;">BOLETA ELECTRÓNICA</h3>
+                    <p style="font-size:1.2rem; font-weight:bold;">${boletaNum}</p>
+                    <hr style="border-color:#333; margin:10px 0;">
+                    <div style="display:flex; justify-content:space-between; font-size:1.2rem; font-weight:bold; color:var(--accent);">
+                        <span>TOTAL:</span>
+                        <span>S/ ${total.toFixed(2)}</span>
+                    </div>
+                    <p style="margin-top:20px;">¡Gracias por su preferencia!</p>
+                </div>
+            `;
+            showCustomModal('🧾 Comprobante de Pago', body, [
+                { text: 'Imprimir', class: 'btn-secondary', onClick: () => window.print() },
+                { text: 'Cerrar Mesa', class: 'btn-primary', onClick: () => { closeGlobalModal(); location.reload(); } }
+            ]);
+        }
+
+        function promptDividir() {
+            let body = `
+                <div class="form-group">
+                    <label>Número de personas para dividir la cuenta:</label>
+                    <input type="number" id="split-n-input" class="form-control" value="2" min="2" max="10" style="width:100%; padding:8px; margin-top:5px; background:var(--bg-tertiary); border:1px solid var(--border-color); color:white; border-radius:4px;">
+                </div>
+            `;
+            showCustomModal('⚖️ Dividir Cuenta', body, [
+                { text: 'Cancelar', class: 'btn-secondary' },
+                { text: 'Confirmar', class: 'btn-primary', onClick: () => {
+                    let n = document.getElementById('split-n-input').value;
+                    if(n && !isNaN(n) && n > 1) {
+                        fetch(`/cajero/api/pedidos/${currentPedidoId}/dividir?nPartes=${n}`, { method: 'POST' })
+                            .then(res => res.json())
+                            .then(fracciones => {
+                                closeGlobalModal();
+                                renderSplitView(fracciones);
+                            });
+                    }
+                }}
+            ]);
+        }
+
+        function renderSplitView(fracciones) {
+            document.getElementById('bill-panel').style.display = 'none';
+            document.getElementById('split-panel').style.display = 'flex';
+            
+            const list = document.getElementById('split-list');
+            list.innerHTML = '';
+            let pending = 0;
+
+            fracciones.forEach(f => {
+                if(!f.pagado) pending += f.monto;
+                list.innerHTML += `
+                    <div class="glass-card" style="padding:10px; display:flex; justify-content:space-between; align-items:center; border:1px solid ${f.pagado ? '#10b981' : '#2e3d60'}">
+                        <div>
+                            <div style="font-weight:bold;">Cliente ${f.numeroCliente}</div>
+                            <div style="font-size:0.8rem; color:var(--text-secondary);">Monto: S/ ${f.monto.toFixed(2)}</div>
+                            ${f.pagado ? `<div style="font-size:0.7rem; color:#10b981;">Pagado (${f.metodoPago}) - ${f.numeroBoleta}</div>` : ''}
+                        </div>
+                        ${!f.pagado ? `<button class="btn btn-primary btn-sm" onclick="pagarFraccion(${f.id}, ${f.monto})">Cobrar</button>` : '✅'}
+                    </div>
+                `;
+            });
+            document.getElementById('split-pending').innerText = 'S/ ' + pending.toFixed(2);
+            if(pending === 0) {
+                showCustomModal('Mesa Liberada', '¡Toda la cuenta ha sido pagada exitosamente!', [
+                    { text: 'Finalizar', class: 'btn-primary', onClick: () => { closeGlobalModal(); location.reload(); } }
+                ]);
+            }
+        }
+
+        function pagarFraccion(id, monto) {
+            fetch(`/cajero/api/fracciones/${id}/pagar?metodoPago=${selectedMethod}`, { method: 'POST' })
+                .then(res => res.json())
+                .then(frac => {
+                    showCustomModal('Pago Exitoso', `Pago parcial registrado. Boleta: ${frac.numeroBoleta}`, [
+                        { text: 'Continuar', class: 'btn-primary', onClick: () => {
+                            closeGlobalModal();
+                            fetch(`/cajero/api/pedidos/${currentPedidoId}/fracciones`)
+                                .then(res => res.json())
+                                .then(fracciones => renderSplitView(fracciones));
+                        }}
+                    ]);
+                });
+        }
+
+        function loadPedido(element) {
+            let id = element.getAttribute('data-id');
+            fetch(`/cajero/api/mesas/${id}/pedido`)
+                .then(res => {
+                    if(!res.ok) throw new Error();
+                    return res.json();
+                })
+                .then(pedido => {
+                    currentPedidoId = pedido.id;
+                    currentTotal = pedido.total;
+                    
+                    if(pedido.estado === 'dividido') {
+                        fetch(`/cajero/api/pedidos/${pedido.id}/fracciones`)
+                            .then(res => res.json())
+                            .then(fracciones => renderSplitView(fracciones));
+                    } else {
+                        document.getElementById('split-panel').style.display = 'none';
+                        document.getElementById('bill-panel').style.display = 'flex';
+                        document.getElementById('bill-title').innerText = 'Cuenta - Pedido #' + pedido.id;
+                        let itemsHtml = '';
+                        pedido.detalles.forEach(d => {
+                            itemsHtml += `<div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>${d.cantidad}x ${d.plato.nombre}</span><span>S/ ${(d.precioUnitario * d.cantidad).toFixed(2)}</span></div>`;
+                        });
+                        
+                        let igv = pedido.total - (pedido.total / 1.18);
+                        itemsHtml += `
+                            <hr style="border-color:#333; margin:10px 0;">
+                            <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:var(--text-secondary);">
+                                <span>I.G.V (18%):</span>
+                                <span>S/ ${igv.toFixed(2)}</span>
+                            </div>
+                        `;
+                        
+                        document.getElementById('bill-items').innerHTML = itemsHtml;
+                        document.getElementById('bill-total').innerText = 'S/ ' + pedido.total.toFixed(2);
+                        calculateChange();
+                    }
+                }).catch(() => showCustomModal('Aviso', 'La mesa no tiene pedido activo.', []));
+        }
+
+        function processPayment() {
+            if (selectedMethod === 'efectivo') {
+                const received = parseFloat(document.getElementById('cash-received').value) || 0;
+                if (received < currentTotal) {
+                    showCustomModal('Error', 'El efectivo recibido es menor al total.', []);
+                    return;
+                }
+            }
+            
+            fetch(`/cajero/api/pedidos/${currentPedidoId}/cobrar?metodoPago=${selectedMethod}`, { method: 'POST' })
+            .then(res => res.json())
+            .then(pedido => {
+                showReceipt('B001-' + String(pedido.id).padStart(6, '0'), pedido.total);
+            });
+        }
+    </script>
+</body>
+</html>

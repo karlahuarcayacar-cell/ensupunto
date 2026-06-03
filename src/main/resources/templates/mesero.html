@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/header :: head('Mesero Dashboard')}"></head>
+<body>
+    <style>
+        .btn-details { background-color: var(--bg-tertiary); border: 1px solid var(--border-color); color: white; }
+        .btn-details:hover { background-color: var(--border-color); }
+        .table-data-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+        .table-total { font-size: 1.1rem; font-weight: 700; color: var(--accent); }
+        .table-items-count { font-size: 0.85rem; color: var(--text-secondary); background: rgba(255,255,255,0.05); padding: 2px 8px; border-radius: 4px; }
+    </style>
+
+    <div class="app-container">
+        <header th:replace="~{fragments/header :: navbar}"></header>
+        
+        <main class="main-content" id="mesero-app">
+            <!-- Salón de Mesas View -->
+            <div id="view-mesas" class="fade-in">
+                <div style="display: flex; flex-direction: column; margin-bottom: 25px;">  
+                    <h1 style="font-size: 1.8rem; color: white;">Salón de Mesas</h1>
+                    <p style="color: var(--text-secondary); font-size: 0.9rem;">Gestión de consumo y pedidos en tiempo real.</p>
+                </div>
+                
+                <div class="tables-grid" id="tables-grid"></div>
+            </div>
+
+            <!-- Nuevo/Modificar Pedido View -->
+            <div id="view-pedido" class="fade-in" style="display:none; height: 100%;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">  
+                    <div>
+                        <h1 style="font-size: 1.6rem; color: white;" id="pedido-title">Nuevo Pedido</h1>
+                        <p style="color: var(--text-secondary); font-size: 0.85rem;">Selecciona los platos para la orden.</p>
+                    </div>
+                    <button class="btn btn-secondary" onclick="goToSalon()">← Volver al Salón</button>
+                </div>
+
+                <div class="order-creator-container">
+                    <!-- ... Sidebar categories unchanged ... -->
+                    <nav class="categories-nav">
+                        <button class="category-tab-btn active" onclick="filterMenu('entradas')">🥗 Entradas</button>
+                        <button class="category-tab-btn" onclick="filterMenu('segundos')">🍲 Segundos</button>
+                        <button class="category-tab-btn" onclick="filterMenu('bebidas')">🥤 Bebidas</button>
+                        <button class="category-tab-btn" onclick="filterMenu('postres')">🍰 Postres</button>
+                    </nav>
+
+                    <div class="dishes-catalog-container" id="dishes-catalog">
+                        <div class="dishes-grid" id="dishes-grid">
+                            <!-- Populated dynamically via JS filtering -->
+                            <div th:each="plato : ${platos}" class="glass-card dish-item-card dish-item" th:data-category="${plato.categoria}" style="display:none;">
+                                <div>
+                                    <div class="dish-item-name" th:text="${plato.nombre}">Plato</div>
+                                    <p class="dish-item-desc" th:text="${plato.descripcion}">Desc</p>
+                                </div>
+                                <div class="dish-item-footer">
+                                    <span class="dish-item-price" th:text="'S/ ' + ${plato.precio}">Precio</span>
+                                    <button class="btn btn-primary btn-sm" th:data-id="${plato.id}" th:data-nombre="${plato.nombre}" th:data-precio="${plato.precio}" onclick="addDish(this)">+ Agregar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass-card order-summary-panel">
+                        <h3 style="font-size: 1.1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">Detalle del Pedido</h3>
+                        <div class="summary-items-list" id="order-summary-items"></div>
+                        <div class="summary-totals-box">
+                            <div class="summary-totals-row grand-total">
+                                <span>Total</span>
+                                <span id="summary-total">S/ 0.00</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" id="btn-send-to-kitchen" style="width: 100%; padding: 12px;" onclick="finalizeAction()">🔥 Enviar a Cocina</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <th:block th:replace="~{fragments/scripts :: commonScripts}"></th:block>
+
+    <script th:inline="javascript">
+        let currentMesaId = null;
+        let currentPedidoId = null;
+        let orderItems = [];
+        let initialOrderItems = [];
+        let isModifying = false;
+        let adminAuthorized = false;
+        let adminId = null;
+        let adminReason = "";
+        let pendingRemoval = null;
+
+        function goToSalon() {
+            document.getElementById('view-pedido').style.display = 'none';
+            document.getElementById('view-mesas').style.display = 'block';
+            loadMesas();
+        }
+
+        function loadMesas() {
+            fetch('/mesero/api/mesas-status')
+                .then(res => res.json())
+                .then(mesas => {
+                    const grid = document.getElementById('tables-grid');
+                    grid.innerHTML = '';
+                    
+                    mesas.forEach(m => {
+                        let badgeClass = '';
+                        let badgeText = m.estado;
+                        
+                        if(m.estado === 'libre') { badgeClass = 'badge-free'; badgeText = 'Libre'; }
+                        else if(m.estado === 'esperando_comida') { badgeClass = 'badge-waiting'; badgeText = 'En Cola'; }
+                        else if(m.estado === 'cocina_preparacion') { badgeClass = 'badge-cooking'; badgeText = 'Preparando'; }
+                        else if(m.estado === 'comiendo') { badgeClass = 'badge-eating'; badgeText = 'Comiendo'; }
+                        else if(m.estado === 'cuenta_pedida') { badgeClass = 'badge-ready'; badgeText = 'Cuenta Pedida'; }
+
+                        let innerHtml = `
+                            <div class="table-header">
+                                <span class="table-number">${m.nombre}</span>
+                                <span class="badge ${badgeClass}">${badgeText}</span>
+                            </div>
+                            <div class="table-body-info">
+                        `;
+
+                        if(m.estado === 'libre') {
+                            innerHtml += `<p style="font-size: 0.8rem; color: var(--text-muted); min-height:60px; display:flex; align-items:center;">Mesa disponible para nuevos clientes.</p>`;
+                        } else {
+                            innerHtml += `
+                                <div class="table-data-row">
+                                    <span class="table-total">S/ ${m.total.toFixed(2)}</span>
+                                    <span class="table-items-count">${m.cantidadPlatos} platos</span>
+                                </div>
+                                <div style="margin-top:10px;">
+                                    <div style="font-size:0.7rem; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px;">Mesero</div>
+                                    <div style="font-size:0.9rem; color:white; font-weight:500;">${m.meseroNombre}</div>
+                                </div>
+                            `;
+                        }
+
+                        innerHtml += `
+                            </div>
+                            <div class="table-footer-actions">
+                                ${m.estado === 'libre' 
+                                    ? `<button class="btn btn-primary btn-sm" style="width:100%">Nueva Orden</button>` 
+                                    : `<button class="btn btn-details btn-sm" style="width:100%">Ver Detalles</button>`}
+                            </div>
+                        `;
+
+                        const card = document.createElement('div');
+                        card.className = `glass-card table-card state-${m.estado}`;
+                        card.innerHTML = innerHtml;
+                        card.onclick = () => handleTableClick(m);
+                        grid.appendChild(card);
+                    });
+                });
+        }
+
+        loadMesas();
+        setInterval(loadMesas, 10000); // Update every 10s
+
+        function handleTableClick(m) {
+            if(m.estado === 'libre') {
+                currentMesaId = m.id;
+                startNewOrder(m.nombre);
+            } else {
+                openTableDetails(m);
+            }
+        }
+
+        function openTableDetails(m) {
+            fetch(`/mesero/api/pedidos/${m.pedidoId}`)
+                .then(res => res.json())
+                .then(pedido => {
+                    let itemsHtml = '';
+                    pedido.detalles.forEach(d => {
+                        itemsHtml += `
+                            <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #222;">
+                                <div>
+                                    <div style="color:white; font-size:0.9rem;">${d.cantidad}x ${d.plato.nombre}</div>
+                                    ${d.nota ? `<div style="font-size:0.75rem; color:orange;">📝 ${d.nota}</div>` : ''}
+                                </div>
+                                <div style="color:var(--text-secondary);">S/ ${(d.precioUnitario * d.cantidad).toFixed(2)}</div>
+                            </div>
+                        `;
+                    });
+
+                    let body = `
+                        <div style="margin-bottom:15px;">
+                            <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                                <span style="color:var(--text-secondary);">Pedido:</span>
+                                <span style="color:white;">#${pedido.id}</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                                <span style="color:var(--text-secondary);">Estado:</span>
+                                <span class="badge" style="background:var(--bg-tertiary);">${pedido.estado}</span>
+                            </div>
+                        </div>
+                        <div style="max-height:200px; overflow-y:auto; margin-bottom:15px; background:rgba(0,0,0,0.2); padding:10px; border-radius:8px;">
+                            ${itemsHtml}
+                        </div>
+                        <div style="display:flex; justify-content:space-between; font-size:1.2rem; font-weight:bold; color:var(--accent);">
+                            <span>TOTAL:</span>
+                            <span>S/ ${pedido.total.toFixed(2)}</span>
+                        </div>
+                    `;
+
+                    let buttons = [
+                        { text: 'Cerrar', class: 'btn-secondary', onClick: closeGlobalModal }
+                    ];
+
+                    if (pedido.estado === 'cocina_pendiente' || pedido.estado === 'cocina_preparacion') {
+                        buttons.push({ text: '✏️ Modificar Pedido', class: 'btn-primary', onClick: () => { 
+                            closeGlobalModal(); 
+                            modificarPedidoExistente(pedido.mesa.id); 
+                        }});
+                    }
+
+                    showCustomModal(`Detalles Mesa ${m.nombre}`, body, buttons);
+                });
+        }
+
+        function startNewOrder(nombreMesa) {
+            currentPedidoId = null;
+            isModifying = false;
+            document.getElementById('pedido-title').innerText = 'Nuevo Pedido: ' + nombreMesa;
+            orderItems = [];
+            initialOrderItems = [];
+            updateSummary();
+            filterMenu('entradas');
+            document.getElementById('view-mesas').style.display = 'none';
+            document.getElementById('view-pedido').style.display = 'block';
+        }
+
+        function modificarPedidoExistente(mesaId) {
+            console.log("Iniciando modificación para mesa:", mesaId);
+            // Usar endpoint de mesero para consistencia
+            fetch(`/mesero/api/mesas-status`)
+                .then(res => res.json())
+                .then(mesas => {
+                    const mesaStatus = mesas.find(m => m.id == mesaId);
+                    if (!mesaStatus || !mesaStatus.pedidoId) throw new Error("No hay pedido activo");
+                    
+                    return fetch(`/mesero/api/pedidos/${mesaStatus.pedidoId}`);
+                })
+                .then(pedido => {
+                    currentPedidoId = pedido.id;
+                    currentMesaId = mesaId;
+                    isModifying = true;
+                    
+                    document.getElementById('pedido-title').innerText = 'Modificar Pedido #' + pedido.id;
+                    
+                    // Mapear items actuales
+                    orderItems = pedido.detalles.map(d => ({
+                        platoId: d.plato.id,
+                        nombre: d.plato.nombre,
+                        precio: d.precioUnitario,
+                        cantidad: d.cantidad,
+                        nota: d.nota,
+                        enviado: true 
+                    }));
+                    initialOrderItems = JSON.parse(JSON.stringify(orderItems));
+                    
+                    // Reset UI del editor
+                    updateSummary();
+                    
+                    // Cambiar visibilidad de las vistas
+                    const viewMesas = document.getElementById('view-mesas');
+                    const viewPedido = document.getElementById('view-pedido');
+                    
+                    if (viewMesas && viewPedido) {
+                        viewMesas.style.display = 'none';
+                        viewPedido.style.display = 'block';
+                        console.log("Vista cambiada a editor");
+                        filterMenu('entradas');
+                    } else {
+                        console.error("No se encontraron los contenedores de vista");
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    showCustomModal('Error', 'No se pudo cargar el pedido para modificar.', []);
+                });
+        }
+
+        function removeDish(id) {
+            let item = orderItems.find(i => i.platoId == id);
+            let initialItem = initialOrderItems.find(i => i.platoId == id);
+            
+            // Regla de Negocio: Si intentamos bajar la cantidad de algo ya enviado
+            if(isModifying && initialItem && item.cantidad <= initialItem.cantidad && !adminAuthorized) {
+                pendingRemoval = id;
+                openAdminModal();
+                return;
+            }
+            
+            let index = orderItems.findIndex(i => i.platoId == id);
+            orderItems[index].cantidad--;
+            if(orderItems[index].cantidad === 0) orderItems.splice(index, 1);
+            updateSummary();
+        }
+
+        function openAdminModal() {
+            let body = `
+                <p style="color:var(--text-secondary); margin-bottom:15px;">Se requiere autorización para anular platos ya enviados a cocina.</p>
+                <div class="form-group" style="margin-bottom:15px;">
+                    <label>Usuario Admin</label>
+                    <input type="text" id="admin-user" class="form-control" value="admin" style="width:100%; padding:8px; margin-top:5px; background:var(--bg-tertiary); border:1px solid var(--border-color); color:white; border-radius:4px;">
+                </div>
+                <div class="form-group" style="margin-bottom:15px;">
+                    <label>Contraseña</label>
+                    <input type="password" id="admin-pass" class="form-control" placeholder="••••" style="width:100%; padding:8px; margin-top:5px; background:var(--bg-tertiary); border:1px solid var(--border-color); color:white; border-radius:4px;">
+                </div>
+                <div class="form-group">
+                    <label>Motivo de anulación</label>
+                    <textarea id="admin-reason" class="form-control" placeholder="Ej: Error de pedido..." style="width:100%; padding:8px; margin-top:5px; background:var(--bg-tertiary); border:1px solid var(--border-color); color:white; border-radius:4px; min-height:60px;"></textarea>
+                </div>
+            `;
+            
+            showCustomModal('🔑 Autorización de Administrador', body, [
+                { text: 'Cancelar', class: 'btn-secondary' },
+                { text: 'Autorizar', class: 'btn-primary', onClick: confirmAdminAuth }
+            ]);
+        }
+
+        function confirmAdminAuth() {
+            const user = document.getElementById('admin-user').value;
+            const pass = document.getElementById('admin-pass').value;
+            adminReason = document.getElementById('admin-reason').value;
+
+            fetch('/mesero/api/validar-admin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: user, password: pass })
+            }).then(res => {
+                if(res.ok) return res.json();
+                throw new Error();
+            }).then(admin => {
+                adminAuthorized = true;
+                adminId = admin.id;
+                closeGlobalModal();
+                if(pendingRemoval) {
+                    removeDish(pendingRemoval);
+                    pendingRemoval = null;
+                }
+            }).catch(() => {
+                closeGlobalModal();
+                showCustomModal('Error de Autorización', 'Clave de administrador incorrecta.', []);
+            });
+        }
+
+        function finalizeAction() {
+            if(orderItems.length === 0) return;
+            const url = isModifying ? `/mesero/api/pedidos/${currentPedidoId}/modificar` : '/mesero/api/pedidos';
+            const payload = {
+                mesaId: currentMesaId,
+                detalles: orderItems,
+                adminId: adminId,
+                razon: adminReason
+            };
+
+            fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).then(() => {
+                showCustomModal('Éxito', isModifying ? 'Pedido modificado exitosamente.' : 'Pedido enviado a cocina.', [
+                    { text: 'Ok', class: 'btn-primary', onClick: () => { closeGlobalModal(); showMesas(); } }
+                ]);
+            });
+        }
+
+        function filterMenu(category) {
+            document.querySelectorAll('.category-tab-btn').forEach(b => b.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+            
+            document.querySelectorAll('.dish-item').forEach(el => {
+                if(el.getAttribute('data-category') === category) {
+                    el.style.display = 'flex';
+                } else {
+                    el.style.display = 'none';
+                }
+            });
+        }
+
+        function addDish(btn) {
+            const id = btn.getAttribute('data-id');
+            const nombre = btn.getAttribute('data-nombre');
+            const precio = parseFloat(btn.getAttribute('data-precio'));
+            
+            let item = orderItems.find(i => i.platoId == id);
+            if(item) {
+                item.cantidad++;
+            } else {
+                orderItems.push({ platoId: id, nombre: nombre, precio: precio, cantidad: 1, nota: '' });
+            }
+            updateSummary();
+        }
+
+        function addNote(id) {
+            let body = `
+                <div class="form-group">
+                    <label>Nota de preparación para este plato:</label>
+                    <input type="text" id="dish-note-input" class="form-control" placeholder="Ej: sin cebolla" style="width:100%; padding:8px; margin-top:5px; background:var(--bg-tertiary); border:1px solid var(--border-color); color:white; border-radius:4px;">
+                </div>
+            `;
+            showCustomModal('Agregar Nota', body, [
+                { text: 'Cancelar', class: 'btn-secondary' },
+                { text: 'Guardar', class: 'btn-primary', onClick: () => {
+                    let note = document.getElementById('dish-note-input').value;
+                    if(note !== null) {
+                        let item = orderItems.find(i => i.platoId == id);
+                        if(item) item.nota = note;
+                        updateSummary();
+                    }
+                    closeGlobalModal();
+                }}
+            ]);
+        }
+
+        function updateSummary() {
+            let subtotal = 0;
+            const container = document.getElementById('order-summary-items');
+            container.innerHTML = '';
+            
+            if(orderItems.length === 0) {
+                container.innerHTML = '<div style="text-align:center; padding: 20px; color:gray;">Pedido vacío</div>';
+            }
+            
+            orderItems.forEach(item => {
+                subtotal += item.precio * item.cantidad;
+                container.innerHTML += `
+                    <div class="summary-item fade-in">
+                        <div class="summary-item-header">
+                            <span>${item.nombre}</span>
+                            <span>S/ ${(item.precio * item.cantidad).toFixed(2)}</span>
+                        </div>
+                        <div class="summary-item-controls" style="margin-top:5px;">
+                            <div class="qty-controls">
+                                <button class="qty-btn" onclick="removeDish(${item.platoId})">-</button>
+                                <span class="qty-val">${item.cantidad}</span>
+                                <button class="qty-btn" onclick="addDish(document.querySelector('[data-id=\\'${item.platoId}\\']'))">+</button>
+                            </div>
+                        </div>
+                        <div style="margin-top:5px;">
+                            ${item.nota ? `<span style="font-size:12px; color:orange;">📝 ${item.nota}</span>` : `<button onclick="addNote(${item.platoId})" style="font-size:12px; border:none; background:none; color:lightblue; cursor:pointer;">+ Agregar nota</button>`}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            let igv = subtotal * 0.18;
+            let total = subtotal + igv;
+            
+            document.getElementById('summary-total').innerHTML = `
+                <div style="font-size:0.8rem; color:var(--text-secondary); text-align:right;">Subtotal: S/ ${subtotal.toFixed(2)}</div>
+                <div style="font-size:0.8rem; color:var(--text-secondary); text-align:right;">IGV (18%): S/ ${igv.toFixed(2)}</div>
+                <div style="font-size:1.2rem; color:var(--accent); text-align:right; margin-top:5px;">Total: S/ ${total.toFixed(2)}</div>
+            `;
+            document.getElementById('btn-send-to-kitchen').disabled = orderItems.length === 0;
+        }
+
+        // Remove old sendOrder function as it's replaced by finalizeAction
+    </script>
+</body>
+</html>

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+    <th:block th:fragment="commonScripts">
+        <th:block th:replace="~{fragments/modal :: globalModal}"></th:block>
+        <script>
+            // Global Modal Logic
+            function showCustomModal(title, bodyHtml, buttons) {
+                document.getElementById('global-modal-title').innerHTML = title;
+                document.getElementById('global-modal-body').innerHTML = bodyHtml;
+                
+                const footer = document.getElementById('global-modal-footer');
+                footer.innerHTML = '';
+                
+                if (buttons && buttons.length > 0) {
+                    buttons.forEach(btn => {
+                        const button = document.createElement('button');
+                        button.className = 'btn ' + (btn.class || 'btn-secondary');
+                        button.innerText = btn.text;
+                        button.onclick = () => {
+                            if (btn.onClick) {
+                                btn.onClick();
+                            } else {
+                                closeGlobalModal();
+                            }
+                        };
+                        footer.appendChild(button);
+                    });
+                } else {
+                    const closeBtn = document.createElement('button');
+                    closeBtn.className = 'btn btn-primary';
+                    closeBtn.innerText = 'Entendido';
+                    closeBtn.onclick = closeGlobalModal;
+                    footer.appendChild(closeBtn);
+                }
+
+                const overlay = document.getElementById('global-modal-overlay');
+                overlay.style.opacity = '1';
+                overlay.style.pointerEvents = 'auto';
+                overlay.querySelector('.modal-container').style.transform = 'scale(1)';
+            }
+
+            function closeGlobalModal() {
+                const overlay = document.getElementById('global-modal-overlay');
+                overlay.style.opacity = '0';
+                overlay.style.pointerEvents = 'none';
+                overlay.querySelector('.modal-container').style.transform = 'scale(0.95)';
+            }
+
+            // Utils
+            function formatCurrency(amount) {
+                return 'S/ ' + parseFloat(amount).toFixed(2);
+            }
+        </script>
+        <!-- CanvasJS for Charts -->
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    </th:block>
+</body>
+</html>

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/header :: head('Login')}"></head>
+<body>
+    <div class="login-wrapper">
+        <div class="login-card">
+            <div class="login-logo">EP</div>
+            <h1 class="login-title">En su punto SAC</h1>
+            <p class="login-subtitle">Sistema Premium de Gestión de Restaurante</p>
+            
+            <div th:if="${error}" class="badge badge-cooking" style="margin-bottom:15px; display:block; text-align:center;" th:text="${error}"></div>
+            
+            <form th:action="@{/login}" method="post">
+                <div class="form-group">
+                    <input type="text" class="form-control" name="username" placeholder="Usuario" required autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <input type="password" class="form-control" name="password" placeholder="Contraseña" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width:100%; margin-top:10px;">Ingresar</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
