@@ -20,7 +20,6 @@
                     <h1 style="font-size: 1.8rem; color: white;">Salón de Mesas</h1>
                     <p style="color: var(--text-secondary); font-size: 0.9rem;">Gestión de consumo y pedidos en tiempo real.</p>
                 </div>
-                
                 <div class="tables-grid" id="tables-grid"></div>
             </div>
 
@@ -35,7 +34,6 @@
                 </div>
 
                 <div class="order-creator-container">
-                    <!-- ... Sidebar categories unchanged ... -->
                     <nav class="categories-nav">
                         <button class="category-tab-btn active" onclick="filterMenu('entradas')">🥗 Entradas</button>
                         <button class="category-tab-btn" onclick="filterMenu('segundos')">🍲 Segundos</button>
@@ -45,7 +43,6 @@
 
                     <div class="dishes-catalog-container" id="dishes-catalog">
                         <div class="dishes-grid" id="dishes-grid">
-                            <!-- Populated dynamically via JS filtering -->
                             <div th:each="plato : ${platos}" class="glass-card dish-item-card dish-item" th:data-category="${plato.categoria}" style="display:none;">
                                 <div>
                                     <div class="dish-item-name" th:text="${plato.nombre}">Plato</div>
@@ -78,38 +75,44 @@
     <th:block th:replace="~{fragments/scripts :: commonScripts}"></th:block>
 
     <script th:inline="javascript">
+        // ── Variables globales ──────────────────────────────────────────
         let currentMesaId = null;
         let currentPedidoId = null;
+        let currentPedidoEstado = null;
         let orderItems = [];
         let initialOrderItems = [];
         let isModifying = false;
         let adminAuthorized = false;
         let adminId = null;
         let adminReason = "";
-        let pendingRemoval = null;
+        // Variables para el flujo de autorización previa
+        let pedidoPendienteModificacion = null;
+        let mesaIdPendiente = null;
 
+        // ── Navegación ──────────────────────────────────────────────────
         function goToSalon() {
             document.getElementById('view-pedido').style.display = 'none';
             document.getElementById('view-mesas').style.display = 'block';
             loadMesas();
         }
 
+        // ── Carga de mesas ──────────────────────────────────────────────
         function loadMesas() {
             fetch('/mesero/api/mesas-status')
                 .then(res => res.json())
                 .then(mesas => {
                     const grid = document.getElementById('tables-grid');
                     grid.innerHTML = '';
-                    
+
                     mesas.forEach(m => {
                         let badgeClass = '';
                         let badgeText = m.estado;
-                        
-                        if(m.estado === 'libre') { badgeClass = 'badge-free'; badgeText = 'Libre'; }
-                        else if(m.estado === 'esperando_comida') { badgeClass = 'badge-waiting'; badgeText = 'En Cola'; }
-                        else if(m.estado === 'cocina_preparacion') { badgeClass = 'badge-cooking'; badgeText = 'Preparando'; }
-                        else if(m.estado === 'comiendo') { badgeClass = 'badge-eating'; badgeText = 'Comiendo'; }
-                        else if(m.estado === 'cuenta_pedida') { badgeClass = 'badge-ready'; badgeText = 'Cuenta Pedida'; }
+
+                        if(m.estado === 'libre')                { badgeClass = 'badge-free';     badgeText = 'Libre'; }
+                        else if(m.estado === 'esperando_comida'){ badgeClass = 'badge-waiting';  badgeText = 'En Cola'; }
+                        else if(m.estado === 'cocina_preparacion'){ badgeClass = 'badge-cooking'; badgeText = 'Preparando'; }
+                        else if(m.estado === 'comiendo')        { badgeClass = 'badge-eating';   badgeText = 'Comiendo'; }
+                        else if(m.estado === 'cuenta_pedida')   { badgeClass = 'badge-ready';    badgeText = 'Cuenta Pedida'; }
 
                         let innerHtml = `
                             <div class="table-header">
@@ -120,7 +123,7 @@
                         `;
 
                         if(m.estado === 'libre') {
-                            innerHtml += `<p style="font-size: 0.8rem; color: var(--text-muted); min-height:60px; display:flex; align-items:center;">Mesa disponible para nuevos clientes.</p>`;
+                            innerHtml += `<p style="font-size:0.8rem; color:var(--text-muted); min-height:60px; display:flex; align-items:center;">Mesa disponible para nuevos clientes.</p>`;
                         } else {
                             innerHtml += `
                                 <div class="table-data-row">
@@ -137,8 +140,8 @@
                         innerHtml += `
                             </div>
                             <div class="table-footer-actions">
-                                ${m.estado === 'libre' 
-                                    ? `<button class="btn btn-primary btn-sm" style="width:100%">Nueva Orden</button>` 
+                                ${m.estado === 'libre'
+                                    ? `<button class="btn btn-primary btn-sm" style="width:100%">Nueva Orden</button>`
                                     : `<button class="btn btn-details btn-sm" style="width:100%">Ver Detalles</button>`}
                             </div>
                         `;
@@ -153,8 +156,9 @@
         }
 
         loadMesas();
-        setInterval(loadMesas, 10000); // Update every 10s
+        setInterval(loadMesas, 10000);
 
+        // ── Click en mesa ───────────────────────────────────────────────
         function handleTableClick(m) {
             if(m.estado === 'libre') {
                 currentMesaId = m.id;
@@ -164,6 +168,7 @@
             }
         }
 
+        // ── Ver detalles de mesa ocupada ────────────────────────────────
         function openTableDetails(m) {
             fetch(`/mesero/api/pedidos/${m.pedidoId}`)
                 .then(res => res.json())
@@ -206,120 +211,93 @@
                     ];
 
                     if (pedido.estado === 'cocina_pendiente' || pedido.estado === 'cocina_preparacion') {
-                        buttons.push({ text: '✏️ Modificar Pedido', class: 'btn-primary', onClick: () => { 
-                            closeGlobalModal(); 
-                            modificarPedidoExistente(pedido.mesa.id); 
-                        }});
+                        buttons.push({
+                            text: '✏️ Modificar Pedido',
+                            class: 'btn-primary',
+                            onClick: () => {
+                                closeGlobalModal();
+                                modificarPedidoExistente(pedido.mesa.id);
+                            }
+                        });
                     }
 
                     showCustomModal(`Detalles Mesa ${m.nombre}`, body, buttons);
                 });
         }
 
+        // ── Nueva orden (mesa libre) ─────────────────────────────────────
         function startNewOrder(nombreMesa) {
             currentPedidoId = null;
+            currentPedidoEstado = null;
             isModifying = false;
-            document.getElementById('pedido-title').innerText = 'Nuevo Pedido: ' + nombreMesa;
+            adminAuthorized = false;
+            adminId = null;
+            adminReason = "";
             orderItems = [];
             initialOrderItems = [];
+            document.getElementById('pedido-title').innerText = 'Nuevo Pedido: ' + nombreMesa;
             updateSummary();
             filterMenu('entradas');
             document.getElementById('view-mesas').style.display = 'none';
             document.getElementById('view-pedido').style.display = 'block';
         }
 
+        // ── Modificar pedido existente ───────────────────────────────────
+        // REGLA: si está en cocina_pendiente → abre directo sin clave
+        //        si está en cocina_preparacion → pide clave de admin PRIMERO
         function modificarPedidoExistente(mesaId) {
-            console.log("Iniciando modificación para mesa:", mesaId);
-            // Usar endpoint de mesero para consistencia
             fetch(`/mesero/api/mesas-status`)
                 .then(res => res.json())
                 .then(mesas => {
                     const mesaStatus = mesas.find(m => m.id == mesaId);
                     if (!mesaStatus || !mesaStatus.pedidoId) throw new Error("No hay pedido activo");
-                    
                     return fetch(`/mesero/api/pedidos/${mesaStatus.pedidoId}`);
                 })
+                .then(res => res.json())
                 .then(pedido => {
-                    currentPedidoId = pedido.id;
-                    currentMesaId = mesaId;
-                    isModifying = true;
-                    
-                    document.getElementById('pedido-title').innerText = 'Modificar Pedido #' + pedido.id;
-                    
-                    // Mapear items actuales
-                    orderItems = pedido.detalles.map(d => ({
-                        platoId: d.plato.id,
-                        nombre: d.plato.nombre,
-                        precio: d.precioUnitario,
-                        cantidad: d.cantidad,
-                        nota: d.nota,
-                        enviado: true 
-                    }));
-                    initialOrderItems = JSON.parse(JSON.stringify(orderItems));
-                    
-                    // Reset UI del editor
-                    updateSummary();
-                    
-                    // Cambiar visibilidad de las vistas
-                    const viewMesas = document.getElementById('view-mesas');
-                    const viewPedido = document.getElementById('view-pedido');
-                    
-                    if (viewMesas && viewPedido) {
-                        viewMesas.style.display = 'none';
-                        viewPedido.style.display = 'block';
-                        console.log("Vista cambiada a editor");
-                        filterMenu('entradas');
+                    if (pedido.estado === 'cocina_preparacion') {
+                        // Guardar para después de autorizar
+                        pedidoPendienteModificacion = pedido;
+                        mesaIdPendiente = mesaId;
+                        openAdminModalParaModificar();
                     } else {
-                        console.error("No se encontraron los contenedores de vista");
+                        // cocina_pendiente: abrir editor directamente sin clave
+                        abrirEditorPedido(pedido, mesaId);
                     }
                 })
                 .catch(err => {
                     console.error(err);
-                    showCustomModal('Error', 'No se pudo cargar el pedido para modificar.', []);
+                    showCustomModal('Error', 'No se pudo cargar el pedido para modificar.', [
+                        { text: 'Cerrar', class: 'btn-secondary', onClick: closeGlobalModal }
+                    ]);
                 });
         }
 
-        function removeDish(id) {
-            let item = orderItems.find(i => i.platoId == id);
-            let initialItem = initialOrderItems.find(i => i.platoId == id);
-            
-            // Regla de Negocio: Si intentamos bajar la cantidad de algo ya enviado
-            if(isModifying && initialItem && item.cantidad <= initialItem.cantidad && !adminAuthorized) {
-                pendingRemoval = id;
-                openAdminModal();
-                return;
-            }
-            
-            let index = orderItems.findIndex(i => i.platoId == id);
-            orderItems[index].cantidad--;
-            if(orderItems[index].cantidad === 0) orderItems.splice(index, 1);
-            updateSummary();
-        }
-
-        function openAdminModal() {
+       
+        function openAdminModalParaModificar() {
             let body = `
-                <p style="color:var(--text-secondary); margin-bottom:15px;">Se requiere autorización para anular platos ya enviados a cocina.</p>
+                <p style="color:var(--text-secondary); margin-bottom:15px;">El pedido ya está en preparación. Se requiere autorización del administrador para modificarlo.</p>
                 <div class="form-group" style="margin-bottom:15px;">
                     <label>Usuario Admin</label>
-                    <input type="text" id="admin-user" class="form-control" value="admin" style="width:100%; padding:8px; margin-top:5px; background:var(--bg-tertiary); border:1px solid var(--border-color); color:white; border-radius:4px;">
+                    <input type="text" id="admin-user" class="form-control" style="width:100%; padding:8px; margin-top:5px; background:var(--bg-tertiary); border:1px solid var(--border-color); color:white; border-radius:4px;">
                 </div>
                 <div class="form-group" style="margin-bottom:15px;">
                     <label>Contraseña</label>
                     <input type="password" id="admin-pass" class="form-control" placeholder="••••" style="width:100%; padding:8px; margin-top:5px; background:var(--bg-tertiary); border:1px solid var(--border-color); color:white; border-radius:4px;">
                 </div>
                 <div class="form-group">
-                    <label>Motivo de anulación</label>
-                    <textarea id="admin-reason" class="form-control" placeholder="Ej: Error de pedido..." style="width:100%; padding:8px; margin-top:5px; background:var(--bg-tertiary); border:1px solid var(--border-color); color:white; border-radius:4px; min-height:60px;"></textarea>
+                    <label>Motivo</label>
+                    <textarea id="admin-reason" class="form-control" placeholder="Ej: Cliente cambió de opinión..." style="width:100%; padding:8px; margin-top:5px; background:var(--bg-tertiary); border:1px solid var(--border-color); color:white; border-radius:4px; min-height:60px;"></textarea>
                 </div>
             `;
-            
-            showCustomModal('🔑 Autorización de Administrador', body, [
-                { text: 'Cancelar', class: 'btn-secondary' },
-                { text: 'Autorizar', class: 'btn-primary', onClick: confirmAdminAuth }
+
+            showCustomModal('🔑 Autorización Requerida', body, [
+                { text: 'Cancelar', class: 'btn-secondary', onClick: closeGlobalModal },
+                { text: 'Autorizar y Modificar', class: 'btn-primary', onClick: confirmarAdminYAbrir }
             ]);
         }
 
-        function confirmAdminAuth() {
+        function confirmarAdminYAbrir() {
             const user = document.getElementById('admin-user').value;
             const pass = document.getElementById('admin-pass').value;
             adminReason = document.getElementById('admin-reason').value;
@@ -328,26 +306,107 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username: user, password: pass })
-            }).then(res => {
-                if(res.ok) return res.json();
+            })
+            .then(res => {
+                if (res.ok) return res.json();
                 throw new Error();
-            }).then(admin => {
+            })
+            .then(admin => {
                 adminAuthorized = true;
                 adminId = admin.id;
                 closeGlobalModal();
-                if(pendingRemoval) {
-                    removeDish(pendingRemoval);
-                    pendingRemoval = null;
-                }
-            }).catch(() => {
+                // Abrir editor con el pedido que guardamos antes
+                abrirEditorPedido(pedidoPendienteModificacion, mesaIdPendiente);
+                pedidoPendienteModificacion = null;
+                mesaIdPendiente = null;
+            })
+            .catch(() => {
                 closeGlobalModal();
-                showCustomModal('Error de Autorización', 'Clave de administrador incorrecta.', []);
+                showCustomModal('Error de Autorización', 'Clave de administrador incorrecta.', [
+                    { text: 'Cerrar', class: 'btn-secondary', onClick: closeGlobalModal }
+                ]);
             });
         }
 
+        
+        function abrirEditorPedido(pedido, mesaId) {
+            currentPedidoId = pedido.id;
+            currentMesaId = mesaId;
+            currentPedidoEstado = pedido.estado;
+            isModifying = true;
+
+            document.getElementById('pedido-title').innerText = 'Modificar Pedido #' + pedido.id;
+
+            orderItems = pedido.detalles.map(d => ({
+                platoId: d.plato.id,
+                nombre: d.plato.nombre,
+                precio: d.precioUnitario,
+                cantidad: d.cantidad,
+                nota: d.nota,
+                enviado: true
+            }));
+            initialOrderItems = JSON.parse(JSON.stringify(orderItems));
+
+            updateSummary();
+            filterMenu('entradas');
+
+            document.getElementById('view-mesas').style.display = 'none';
+            document.getElementById('view-pedido').style.display = 'block';
+        }
+
+       
+        function removeDish(id) {
+            let index = orderItems.findIndex(i => i.platoId == id);
+            if (index === -1) return;
+            orderItems[index].cantidad--;
+            if(orderItems[index].cantidad === 0) orderItems.splice(index, 1);
+            updateSummary();
+        }
+
+        // ── Agregar plato ────────────────────────────────────────────────
+        function addDish(btn) {
+            const id = btn.getAttribute('data-id');
+            const nombre = btn.getAttribute('data-nombre');
+            const precio = parseFloat(btn.getAttribute('data-precio'));
+
+            let item = orderItems.find(i => i.platoId == id);
+            if(item) {
+                item.cantidad++;
+            } else {
+                orderItems.push({ platoId: id, nombre: nombre, precio: precio, cantidad: 1, nota: '' });
+            }
+            updateSummary();
+        }
+
+        // ── Agregar nota ─────────────────────────────────────────────────
+        function addNote(id) {
+            let body = `
+                <div class="form-group">
+                    <label>Nota de preparación para este plato:</label>
+                    <input type="text" id="dish-note-input" class="form-control" placeholder="Ej: sin cebolla" style="width:100%; padding:8px; margin-top:5px; background:var(--bg-tertiary); border:1px solid var(--border-color); color:white; border-radius:4px;">
+                </div>
+            `;
+            showCustomModal('Agregar Nota', body, [
+                { text: 'Cancelar', class: 'btn-secondary', onClick: closeGlobalModal },
+                { text: 'Guardar', class: 'btn-primary', onClick: () => {
+                    let note = document.getElementById('dish-note-input').value;
+                    if(note !== null) {
+                        let item = orderItems.find(i => i.platoId == id);
+                        if(item) item.nota = note;
+                        updateSummary();
+                    }
+                    closeGlobalModal();
+                }}
+            ]);
+        }
+
+        // ── Enviar pedido (nuevo o modificado) ──────────────────────────
         function finalizeAction() {
             if(orderItems.length === 0) return;
-            const url = isModifying ? `/mesero/api/pedidos/${currentPedidoId}/modificar` : '/mesero/api/pedidos';
+            const url = isModifying
+                ? `/mesero/api/pedidos/${currentPedidoId}/modificar`
+                : '/mesero/api/pedidos';
+
             const payload = {
                 mesaId: currentMesaId,
                 detalles: orderItems,
@@ -361,68 +420,40 @@
                 body: JSON.stringify(payload)
             }).then(() => {
                 showCustomModal('Éxito', isModifying ? 'Pedido modificado exitosamente.' : 'Pedido enviado a cocina.', [
-                    { text: 'Ok', class: 'btn-primary', onClick: () => { closeGlobalModal(); showMesas(); } }
+                    { text: 'Ok', class: 'btn-primary', onClick: () => { closeGlobalModal(); goToSalon(); } }
                 ]);
             });
         }
 
+        // ── Filtro de categorías ─────────────────────────────────────────
         function filterMenu(category) {
             document.querySelectorAll('.category-tab-btn').forEach(b => b.classList.remove('active'));
-            event.currentTarget.classList.add('active');
-            
+
+            if (typeof event !== 'undefined' && event && event.currentTarget) {
+                event.currentTarget.classList.add('active');
+            } else {
+                document.querySelectorAll('.category-tab-btn').forEach(b => {
+                    if (b.getAttribute('onclick') && b.getAttribute('onclick').includes(`'${category}'`)) {
+                        b.classList.add('active');
+                    }
+                });
+            }
+
             document.querySelectorAll('.dish-item').forEach(el => {
-                if(el.getAttribute('data-category') === category) {
-                    el.style.display = 'flex';
-                } else {
-                    el.style.display = 'none';
-                }
+                el.style.display = el.getAttribute('data-category') === category ? 'flex' : 'none';
             });
         }
 
-        function addDish(btn) {
-            const id = btn.getAttribute('data-id');
-            const nombre = btn.getAttribute('data-nombre');
-            const precio = parseFloat(btn.getAttribute('data-precio'));
-            
-            let item = orderItems.find(i => i.platoId == id);
-            if(item) {
-                item.cantidad++;
-            } else {
-                orderItems.push({ platoId: id, nombre: nombre, precio: precio, cantidad: 1, nota: '' });
-            }
-            updateSummary();
-        }
-
-        function addNote(id) {
-            let body = `
-                <div class="form-group">
-                    <label>Nota de preparación para este plato:</label>
-                    <input type="text" id="dish-note-input" class="form-control" placeholder="Ej: sin cebolla" style="width:100%; padding:8px; margin-top:5px; background:var(--bg-tertiary); border:1px solid var(--border-color); color:white; border-radius:4px;">
-                </div>
-            `;
-            showCustomModal('Agregar Nota', body, [
-                { text: 'Cancelar', class: 'btn-secondary' },
-                { text: 'Guardar', class: 'btn-primary', onClick: () => {
-                    let note = document.getElementById('dish-note-input').value;
-                    if(note !== null) {
-                        let item = orderItems.find(i => i.platoId == id);
-                        if(item) item.nota = note;
-                        updateSummary();
-                    }
-                    closeGlobalModal();
-                }}
-            ]);
-        }
-
+        // ── Resumen del pedido ───────────────────────────────────────────
         function updateSummary() {
             let subtotal = 0;
             const container = document.getElementById('order-summary-items');
             container.innerHTML = '';
-            
+
             if(orderItems.length === 0) {
-                container.innerHTML = '<div style="text-align:center; padding: 20px; color:gray;">Pedido vacío</div>';
+                container.innerHTML = '<div style="text-align:center; padding:20px; color:gray;">Pedido vacío</div>';
             }
-            
+
             orderItems.forEach(item => {
                 subtotal += item.precio * item.cantidad;
                 container.innerHTML += `
@@ -439,15 +470,17 @@
                             </div>
                         </div>
                         <div style="margin-top:5px;">
-                            ${item.nota ? `<span style="font-size:12px; color:orange;">📝 ${item.nota}</span>` : `<button onclick="addNote(${item.platoId})" style="font-size:12px; border:none; background:none; color:lightblue; cursor:pointer;">+ Agregar nota</button>`}
+                            ${item.nota
+                                ? `<span style="font-size:12px; color:orange;">📝 ${item.nota}</span>`
+                                : `<button onclick="addNote(${item.platoId})" style="font-size:12px; border:none; background:none; color:lightblue; cursor:pointer;">+ Agregar nota</button>`}
                         </div>
                     </div>
                 `;
             });
-            
+
             let igv = subtotal * 0.18;
             let total = subtotal + igv;
-            
+
             document.getElementById('summary-total').innerHTML = `
                 <div style="font-size:0.8rem; color:var(--text-secondary); text-align:right;">Subtotal: S/ ${subtotal.toFixed(2)}</div>
                 <div style="font-size:0.8rem; color:var(--text-secondary); text-align:right;">IGV (18%): S/ ${igv.toFixed(2)}</div>
@@ -455,8 +488,6 @@
             `;
             document.getElementById('btn-send-to-kitchen').disabled = orderItems.length === 0;
         }
-
-        // Remove old sendOrder function as it's replaced by finalizeAction
     </script>
 </body>
 </html>
