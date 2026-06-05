@@ -11,6 +11,9 @@
                     <h1 style="font-size: 1.8rem; color: white;">Panel Administrativo</h1>
                     <p style="color: var(--text-secondary); font-size: 0.9rem;">Gestión Integral del Restaurante</p>
                 </div>
+                <button class="btn btn-primary" onclick="window.location.href='/admin/api/reporte/descargar'" style="background: #ff6600; border: none; color: white; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold;">
+                    📄 Descargar Reporte PDF
+                </button>
             </div>
             
             <nav class="categories-nav" style="margin-bottom: 20px;">
@@ -262,6 +265,7 @@
             fetch('/admin/api/usuarios')
                 .then(res => res.json())
                 .then(data => {
+					
                     const tbody = document.getElementById('usuarios-table-body');
                     tbody.innerHTML = '';
                     data.forEach(u => {
@@ -314,28 +318,61 @@
         }
 
         function saveUser() {
-            let id = document.getElementById('user-id').value;
-            let payload = {
-                nombre: document.getElementById('user-nombre').value,
-                nombreUsuario: document.getElementById('user-username').value,
-                rol: document.getElementById('user-rol').value,
-                activo: true
-            };
-            if(!id) {
-                payload.contrasena = document.getElementById('user-pass').value;
-            }
-            
-            let method = id ? 'PUT' : 'POST';
-            let url = id ? `/admin/api/usuarios/${id}` : `/admin/api/usuarios`;
-            
-            fetch(url, {
-                method: method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            }).then(() => {
-                closeGlobalModal();
-                loadUsuarios();
-            });
+			let id = document.getElementById('user-id').value;
+			    
+			    let nombreVal = document.getElementById('user-nombre').value.trim();
+			    let usernameEl = document.getElementById('user-username');
+			    let usernameVal = usernameEl ? usernameEl.value.trim() : '';
+			    let rolVal = document.getElementById('user-rol').value;
+
+			    
+			    if (!nombreVal) {
+			        alert('El nombre completo es obligatorio.');
+			        return;
+			    }
+			    if (!id && !usernameVal) {
+			        alert('El nombre de usuario es obligatorio.');
+			        return;
+			    }
+
+			    let payload = {
+			        nombre: nombreVal,
+			        nombreUsuario: usernameVal,
+			        rol: rolVal,
+			        activo: true
+			    };
+
+			    if (!id) {
+			        let passVal = document.getElementById('user-pass').value;
+			        if (!passVal) {
+			            alert('La contraseña es obligatoria.');
+			            return;
+			        }
+			        payload.contrasena = passVal;
+			    }
+
+			    let method = id ? 'PUT' : 'POST';
+			    let url = id ? `/admin/api/usuarios/${id}` : `/admin/api/usuarios`;
+
+			    fetch(url, {
+			        method: method,
+			        headers: { 'Content-Type': 'application/json' },
+			        body: JSON.stringify(payload)
+			    })
+			    .then(res => {
+			        if (!res.ok) {
+			            return res.text().then(text => { throw new Error(text); });
+			        }
+			        return res.json();
+			    })
+			    .then(() => {
+			        closeGlobalModal();
+			        loadUsuarios();
+			    })
+			    .catch(err => {
+			        console.error('Error al guardar usuario:', err);
+			        alert('Error al guardar: ' + err.message);
+			    });
         }
     </script>
 </body>
