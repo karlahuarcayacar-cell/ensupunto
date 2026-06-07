@@ -18,6 +18,9 @@ public interface PedidoRepository extends JpaRepository<Pedido, Integer> {
     // Find orders for Kitchen (pendientes, cocina_preparacion)
     List<Pedido> findByEstadoInOrderByFechaCreacionAsc(List<String> estados);
 
+    // Find orders by estado
+    List<Pedido> findByEstado(String estado);
+
     // Find paid orders today for stats
     List<Pedido> findByEstadoAndFechaPagoBetween(String estado, LocalDateTime start, LocalDateTime end);
 }
