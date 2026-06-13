@@ -82,7 +82,8 @@
                     <div>
                         <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 3px;">Efectivo Recibido (S/):</label>
                         <input type="number" step="0.01" min="0" id="frac-cash-received" class="form-control" style="width: 100%; padding: 6px 10px; background: var(--bg-primary); border: 1px solid var(--border-color); color: white; border-radius: 4px; font-size: 0.9rem;" placeholder="0.00" 
-                               th:oninput="'calculateFracChange(' + ${#numbers.formatDecimal(fraccion.monto, 1, 2, 'POINT')} + ')'">
+                               th:data-total="${#numbers.formatDecimal(fraccion.monto, 1, 2, 'POINT')}"
+                               oninput="calculateFracChange(this.getAttribute('data-total'))">
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 0.9rem; margin-top: 5px;">
                         <span>Vuelto:</span>
@@ -133,7 +134,8 @@
                 rsInput.setAttribute('required', 'required');
             }
         }
-        function calculateFracChange(total) {
+        function calculateFracChange(totalStr) {
+            const total = parseFloat(totalStr) || 0;
             const receivedVal = document.getElementById('frac-cash-received').value;
             const received = parseFloat(receivedVal) || 0;
             const change = received - total;
