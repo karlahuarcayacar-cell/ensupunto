@@ -6,6 +6,7 @@ import com.ensupunto.entity.Usuario;
 import com.ensupunto.service.MesaService;
 import com.ensupunto.service.PedidoService;
 import jakarta.servlet.http.HttpSession;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -47,6 +48,7 @@ public class CajeroController {
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
             model.addAttribute("fracciones", fracciones);
             model.addAttribute("saldoPendiente", saldo);
+            model.addAttribute("mesaId", id);
             return "cajero/fragmentos/dividida :: detalle";
         }
         
@@ -106,6 +108,9 @@ public class CajeroController {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         model.addAttribute("fracciones", fracciones);
         model.addAttribute("saldoPendiente", saldo);
+        if (!fracciones.isEmpty()) {
+            model.addAttribute("mesaId", fracciones.get(0).getPedido().getMesa().getId());
+        }
         return "cajero/fragmentos/dividida :: detalle";
     }
 
@@ -129,6 +134,7 @@ public class CajeroController {
             @RequestParam(required = false) BigDecimal efectivoRecibido,
             @RequestParam(required = false) BigDecimal vuelto,
             HttpSession session,
+            HttpServletResponse response,
             Model model) {
         Usuario u = (Usuario) session.getAttribute("usuarioLogueado");
         PagoFraccionado pf = pedidoService.registrarPagoFraccion(id, metodoPago, u.getId());
@@ -136,6 +142,10 @@ public class CajeroController {
         
         String prefix = "boleta".equals(tipoComprobante) ? "B001-" : "F001-";
         String docNum = prefix + String.format("F%05d", pf.getId());
+        
+        // Check if all fractions are paid
+        List<PagoFraccionado> todas = pedidoService.obtenerFraccionesPorPedido(p.getId());
+        boolean todosPagados = todas.stream().allMatch(PagoFraccionado::getPagado);
         
         model.addAttribute("pedido", p);
         model.addAttribute("tipoComprobante", tipoComprobante);
@@ -153,8 +163,14 @@ public class CajeroController {
         model.addAttribute("vuelto", vuelto != null ? vuelto : BigDecimal.ZERO);
         
         model.addAttribute("esFraccion", true);
+        model.addAttribute("esUltimaFraccion", todosPagados);
         model.addAttribute("fraccionMonto", pf.getMonto());
         model.addAttribute("numeroCliente", pf.getNumeroCliente());
+        
+        // Trigger background refresh in HTMX if not the last one
+        if (!todosPagados) {
+            response.setHeader("HX-Trigger", "refresh-split-list");
+        }
         
         return "cajero/fragmentos/recibo :: comprobante";
     }

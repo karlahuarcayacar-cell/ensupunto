@@ -168,10 +168,12 @@
             <button class="btn btn-secondary" onclick="window.printReceipt()" style="display: flex; align-items: center; gap: 6px;">
                 <span>🖨️</span> Imprimir Ticket
             </button>
-            <button th:if="${esFraccion == null || !esFraccion}" class="btn btn-primary" onclick="location.reload()" style="display: flex; align-items: center; gap: 6px;">
+            <!-- Si es cobro total o la última fracción: refrescar para liberar mesa -->
+            <button th:if="${esFraccion == null || !esFraccion || (esUltimaFraccion != null && esUltimaFraccion)}" class="btn btn-primary" onclick="location.reload()" style="display: flex; align-items: center; gap: 6px;">
                 <span>✅</span> Finalizar y Liberar Mesa
             </button>
-            <button th:if="${esFraccion != null && esFraccion}" class="btn btn-primary" 
+            <!-- Si es fracción intermedia: cerrar boleta y continuar cobrando otras fracciones -->
+            <button th:if="${esFraccion != null && esFraccion && (esUltimaFraccion == null || !esUltimaFraccion)}" class="btn btn-primary" 
                     th:hx-get="'/cajero/mesa/' + ${pedido.mesa.id} + '/panel'"
                     hx-target="#cashier-right-panel"
                     onclick="this.closest('.modal-overlay').remove()"
