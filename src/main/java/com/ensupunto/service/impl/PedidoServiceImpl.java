@@ -215,4 +215,9 @@ public class PedidoServiceImpl implements PedidoService {
     public PagoFraccionado buscarFraccionPorId(Integer id) {
         return pagoFraccionadoRepository.findById(id).orElseThrow();
     }
+
+    @Override
+    public List<PagoFraccionado> obtenerFraccionesPorPedido(Integer pedidoId) {
+        return pagoFraccionadoRepository.findByPedidoId(pedidoId);
+    }
 }

@@ -40,7 +40,7 @@ public class CajeroController {
         }
         
         if ("dividido".equals(p.getEstado())) {
-            List<PagoFraccionado> fracciones = p.getPagosFraccionados();
+            List<PagoFraccionado> fracciones = pedidoService.obtenerFraccionesPorPedido(p.getId());
             BigDecimal saldo = fracciones.stream()
                     .filter(f -> !f.getPagado())
                     .map(PagoFraccionado::getMonto)
