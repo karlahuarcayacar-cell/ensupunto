@@ -210,4 +210,9 @@ public class PedidoServiceImpl implements PedidoService {
 
         return pf;
     }
+
+    @Override
+    public PagoFraccionado buscarFraccionPorId(Integer id) {
+        return pagoFraccionadoRepository.findById(id).orElseThrow();
+    }
 }

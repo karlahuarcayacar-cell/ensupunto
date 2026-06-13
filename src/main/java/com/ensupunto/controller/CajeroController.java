@@ -108,20 +108,52 @@ public class CajeroController {
         return "cajero/fragmentos/dividida :: detalle";
     }
 
+    @GetMapping("/fracciones/{id}/pagar/prompt")
+    public String promptPagarFraccion(@PathVariable Integer id, Model model) {
+        PagoFraccionado pf = pedidoService.buscarFraccionPorId(id);
+        model.addAttribute("fraccion", pf);
+        return "cajero/fragmentos/cobrar_fraccion_modal :: modal";
+    }
+
     @PostMapping("/fracciones/{id}/pagar")
-    public String pagarFraccion(@PathVariable Integer id, @RequestParam(defaultValue = "efectivo") String metodoPago, HttpSession session, Model model) {
+    public String pagarFraccion(
+            @PathVariable Integer id,
+            @RequestParam String metodoPago,
+            @RequestParam String tipoComprobante,
+            @RequestParam(required = false) String dniCliente,
+            @RequestParam(required = false) String nombreClienteBoleta,
+            @RequestParam(required = false) String rucCliente,
+            @RequestParam(required = false) String razonSocial,
+            @RequestParam(required = false) String direccionFactura,
+            @RequestParam(required = false) BigDecimal efectivoRecibido,
+            @RequestParam(required = false) BigDecimal vuelto,
+            HttpSession session,
+            Model model) {
         Usuario u = (Usuario) session.getAttribute("usuarioLogueado");
         PagoFraccionado pf = pedidoService.registrarPagoFraccion(id, metodoPago, u.getId());
         Pedido p = pf.getPedido();
         
-        List<PagoFraccionado> fracciones = p.getPagosFraccionados();
-        BigDecimal saldo = fracciones.stream()
-                .filter(f -> !f.getPagado())
-                .map(PagoFraccionado::getMonto)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        model.addAttribute("fracciones", fracciones);
-        model.addAttribute("saldoPendiente", saldo);
-        return "cajero/fragmentos/dividida :: detalle";
+        String prefix = "boleta".equals(tipoComprobante) ? "B001-" : "F001-";
+        String docNum = prefix + String.format("F%05d", pf.getId());
+        
+        model.addAttribute("pedido", p);
+        model.addAttribute("tipoComprobante", tipoComprobante);
+        model.addAttribute("docNum", docNum);
+        model.addAttribute("metodoPago", metodoPago);
+        
+        model.addAttribute("dniCliente", dniCliente);
+        model.addAttribute("nombreCliente", nombreClienteBoleta);
+        model.addAttribute("rucCliente", rucCliente);
+        model.addAttribute("razonSocial", razonSocial);
+        model.addAttribute("direccionFactura", direccionFactura);
+        model.addAttribute("efectivoRecibido", efectivoRecibido != null ? efectivoRecibido : BigDecimal.ZERO);
+        model.addAttribute("vuelto", vuelto != null ? vuelto : BigDecimal.ZERO);
+        
+        model.addAttribute("esFraccion", true);
+        model.addAttribute("fraccionMonto", pf.getMonto());
+        model.addAttribute("numeroCliente", pf.getNumeroCliente());
+        
+        return "cajero/fragmentos/recibo :: comprobante";
     }
 
     @GetMapping("/notificar/mesa-liberada")

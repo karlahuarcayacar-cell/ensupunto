@@ -26,6 +26,7 @@ public interface PedidoService {
     Pedido cobrarPedidoRegular(Integer pedidoId, Integer cajeroId, String metodoPago);
     List<PagoFraccionado> dividirCuenta(Integer pedidoId, int nPartes);
     PagoFraccionado registrarPagoFraccion(Integer fraccionId, String metodoPago, Integer cajeroId);
+    PagoFraccionado buscarFraccionPorId(Integer id);
 
     // Mapping helper
     default List<Map<String, Object>> mapearPedidos(List<Pedido> pedidos) {

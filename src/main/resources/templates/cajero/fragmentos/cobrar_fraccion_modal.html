@@ -1,0 +1,149 @@
+<div th:fragment="modal" class="modal-overlay" style="backdrop-filter: blur(8px); opacity: 1; pointer-events: auto; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(10, 14, 23, 0.8); z-index: 2000; display: flex; align-items: center; justify-content: center;" id="pay-fraction-modal">
+    <div class="modal-container" style="background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-lg); width: 90%; max-width: 450px; box-shadow: var(--shadow-lg); display: flex; flex-direction: column;">
+        
+        <div class="modal-header" style="padding: 20px 24px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
+            <h3 class="modal-title" style="font-size: 1.25rem; color: white;" th:text="'💳 Cobrar Cliente ' + ${fraccion.numeroCliente}">Cobrar Cliente</h3>
+            <button class="modal-close" onclick="this.closest('.modal-overlay').remove()" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.5rem; width: 32px; height: 32px; border-radius: 50%;">&times;</button>
+        </div>
+        
+        <form th:hx-post="'/cajero/fracciones/' + ${fraccion.id} + '/pagar'" hx-target="#cashier-right-panel" hx-on::after-request="this.closest('.modal-overlay').remove()" style="display: flex; flex-direction: column; margin: 0;">
+            <div class="modal-body" style="padding: 24px; display: flex; flex-direction: column; gap: 12px; max-height: 60vh; overflow-y: auto;">
+                
+                <!-- Display Amount -->
+                <div style="text-align: center; padding: 15px; background: rgba(255, 102, 0, 0.05); border: 1px solid rgba(255, 102, 0, 0.15); border-radius: 8px;">
+                    <span style="font-size: 0.85rem; color: var(--text-secondary); display: block;">Monto a Cobrar:</span>
+                    <strong style="font-size: 1.8rem; color: var(--accent);" th:text="'S/ ' + ${#numbers.formatDecimal(fraccion.monto, 1, 2)}">S/ 0.00</strong>
+                </div>
+
+                <input type="hidden" name="efectivoRecibido" id="frac-efectivo-recibido-hidden" value="0.00">
+                <input type="hidden" name="vuelto" id="frac-vuelto-hidden" value="0.00">
+
+                <!-- Comprobante Type Selector -->
+                <div>
+                    <label style="font-size: 0.85rem; color: var(--text-secondary); display: block; margin-bottom: 5px;">Tipo de Comprobante:</label>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="radio" name="tipoComprobante" value="boleta" id="fc-boleta" checked style="display: none;" onchange="toggleFracComprobanteFields('boleta')">
+                        <label for="fc-boleta" id="lbl-frac-boleta" class="payment-method-btn active" style="flex: 1; padding: 10px; flex-direction: row; justify-content: center; align-items: center; gap: 6px; font-size: 0.85rem; margin-bottom: 0;">
+                            <span>📄</span> Boleta
+                        </label>
+                        
+                        <input type="radio" name="tipoComprobante" value="factura" id="fc-factura" style="display: none;" onchange="toggleFracComprobanteFields('factura')">
+                        <label for="fc-factura" id="lbl-frac-factura" class="payment-method-btn" style="flex: 1; padding: 10px; flex-direction: row; justify-content: center; align-items: center; gap: 6px; font-size: 0.85rem; margin-bottom: 0;">
+                            <span>🏢</span> Factura
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Boleta Fields -->
+                <div id="frac-boleta-fields" style="padding: 12px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 8px; display: flex; flex-direction: column; gap: 8px;">
+                    <div>
+                        <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 3px;">DNI (Opcional):</label>
+                        <input type="text" name="dniCliente" class="form-control" style="width: 100%; padding: 6px 10px; background: var(--bg-primary); border: 1px solid var(--border-color); color: white; border-radius: 4px; font-size: 0.85rem;" placeholder="8 dígitos" maxlength="8" pattern="\d{8}">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 3px;">Nombre Cliente (Opcional):</label>
+                        <input type="text" name="nombreClienteBoleta" class="form-control" style="width: 100%; padding: 6px 10px; background: var(--bg-primary); border: 1px solid var(--border-color); color: white; border-radius: 4px; font-size: 0.85rem;" placeholder="Ej: Juan Pérez">
+                    </div>
+                </div>
+
+                <!-- Factura Fields -->
+                <div id="frac-factura-fields" style="padding: 12px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 8px; display: none; flex-direction: column; gap: 8px;">
+                    <div>
+                        <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 3px;">RUC:</label>
+                        <input type="text" id="ruc-frac-input" name="rucCliente" class="form-control" style="width: 100%; padding: 6px 10px; background: var(--bg-primary); border: 1px solid var(--border-color); color: white; border-radius: 4px; font-size: 0.85rem;" placeholder="11 dígitos" maxlength="11" pattern="\d{11}">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 3px;">Razón Social:</label>
+                        <input type="text" id="rs-frac-input" name="razonSocial" class="form-control" style="width: 100%; padding: 6px 10px; background: var(--bg-primary); border: 1px solid var(--border-color); color: white; border-radius: 4px; font-size: 0.85rem;" placeholder="Ej: Mi Empresa S.A.C.">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 3px;">Dirección Fiscal (Opcional):</label>
+                        <input type="text" name="direccionFactura" class="form-control" style="width: 100%; padding: 6px 10px; background: var(--bg-primary); border: 1px solid var(--border-color); color: white; border-radius: 4px; font-size: 0.85rem;" placeholder="Ej: Av. Larco 456, Miraflores">
+                    </div>
+                </div>
+
+                <!-- Payment Method -->
+                <div>
+                    <label style="font-size: 0.85rem; color: var(--text-secondary); display: block; margin-bottom: 5px;">Método de Pago:</label>
+                    <div class="payment-method-selector" style="margin-bottom: 0;">
+                        <input type="radio" name="metodoPago" value="efectivo" id="mf-efectivo" checked style="display:none;" onchange="toggleFracCashCalc(true)">
+                        <label for="mf-efectivo" id="lbl-frac-efectivo" class="payment-method-btn active" style="margin-bottom:0;" onclick="updateFracMethodUI('efectivo')">Efectivo</label>
+                        
+                        <input type="radio" name="metodoPago" value="tarjeta" id="mf-tarjeta" style="display:none;" onchange="toggleFracCashCalc(false)">
+                        <label for="mf-tarjeta" id="lbl-frac-tarjeta" class="payment-method-btn" style="margin-bottom:0;" onclick="updateFracMethodUI('tarjeta')">Tarjeta</label>
+                        
+                        <input type="radio" name="metodoPago" value="yape" id="mf-yape" style="display:none;" onchange="toggleFracCashCalc(false)">
+                        <label for="mf-yape" id="lbl-frac-yape" class="payment-method-btn" style="margin-bottom:0;" onclick="updateFracMethodUI('yape')">Yape/Plin</label>
+                    </div>
+                </div>
+
+                <!-- Cash Calculator -->
+                <div id="frac-cash-calculator" style="padding: 12px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 8px; display: flex; flex-direction: column; gap: 8px;">
+                    <div>
+                        <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 3px;">Efectivo Recibido (S/):</label>
+                        <input type="number" step="0.01" min="0" id="frac-cash-received" class="form-control" style="width: 100%; padding: 6px 10px; background: var(--bg-primary); border: 1px solid var(--border-color); color: white; border-radius: 4px; font-size: 0.9rem;" placeholder="0.00" 
+                               th:oninput="'calculateFracChange(' + ${fraccion.monto} + ')'">
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 0.9rem; margin-top: 5px;">
+                        <span>Vuelto:</span>
+                        <span id="frac-cash-change" style="color: #10b981;">S/ 0.00</span>
+                    </div>
+                </div>
+
+            </div>
+            
+            <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid var(--border-color); background-color: rgba(10, 14, 23, 0.4); display: flex; align-items: center; justify-content: flex-end; gap: 12px;">
+                <button type="button" class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancelar</button>
+                <button type="submit" class="btn btn-success" style="font-weight: bold;">Confirmar Pago</button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        function toggleFracCashCalc(show) {
+            document.getElementById('frac-cash-calculator').style.display = show ? 'flex' : 'none';
+            if (!show) {
+                document.getElementById('frac-cash-received').value = '';
+                document.getElementById('frac-efectivo-recibido-hidden').value = '0.00';
+                document.getElementById('frac-vuelto-hidden').value = '0.00';
+                document.getElementById('frac-cash-change').innerText = 'S/ 0.00';
+                document.getElementById('frac-cash-change').style.color = '#10b981';
+            }
+        }
+        function updateFracMethodUI(method) {
+            document.getElementById('lbl-frac-efectivo').classList.toggle('active', method === 'efectivo');
+            document.getElementById('lbl-frac-tarjeta').classList.toggle('active', method === 'tarjeta');
+            document.getElementById('lbl-frac-yape').classList.toggle('active', method === 'yape');
+        }
+        function toggleFracComprobanteFields(type) {
+            const isBoleta = type === 'boleta';
+            document.getElementById('frac-boleta-fields').style.display = isBoleta ? 'flex' : 'none';
+            document.getElementById('frac-factura-fields').style.display = isBoleta ? 'none' : 'flex';
+            
+            document.getElementById('lbl-frac-boleta').classList.toggle('active', isBoleta);
+            document.getElementById('lbl-frac-factura').classList.toggle('active', !isBoleta);
+            
+            const rucInput = document.getElementById('ruc-frac-input');
+            const rsInput = document.getElementById('rs-frac-input');
+            if (isBoleta) {
+                rucInput.removeAttribute('required');
+                rsInput.removeAttribute('required');
+            } else {
+                rucInput.setAttribute('required', 'required');
+                rsInput.setAttribute('required', 'required');
+            }
+        }
+        function calculateFracChange(total) {
+            const receivedVal = document.getElementById('frac-cash-received').value;
+            const received = parseFloat(receivedVal) || 0;
+            const change = received - total;
+            const el = document.getElementById('frac-cash-change');
+            
+            el.innerText = 'S/ ' + (change > 0 ? change.toFixed(2) : '0.00');
+            el.style.color = change >= 0 ? '#10b981' : '#ef4444';
+            
+            document.getElementById('frac-efectivo-recibido-hidden').value = received.toFixed(2);
+            document.getElementById('frac-vuelto-hidden').value = (change > 0 ? change : 0).toFixed(2);
+        }
+    </script>
+</div>

@@ -10,8 +10,8 @@
                 <div th:if="${f.pagado}" style="font-size:0.7rem; color:#10b981;" th:text="'Pagado (' + ${f.metodoPago} + ') - ' + ${f.numeroBoleta}">Boleta</div>
             </div>
             <button th:if="${!f.pagado}" class="btn btn-primary btn-sm"
-                    th:hx-post="'/cajero/fracciones/' + ${f.id} + '/pagar'"
-                    hx-target="#cashier-right-panel">Cobrar</button>
+                    th:hx-get="'/cajero/fracciones/' + ${f.id} + '/pagar/prompt'"
+                    hx-target="body" hx-swap="beforeend">Cobrar</button>
             <span th:if="${f.pagado}">✅</span>
         </div>
     </div>
