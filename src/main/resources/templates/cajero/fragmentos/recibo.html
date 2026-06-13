@@ -9,7 +9,9 @@
         
         <div class="modal-body" style="padding: 24px; overflow-y: auto; max-height: 70vh;">
             <!-- Thermal Ticket Mockup Container -->
-            <div class="ticket-receipt" style="background: white; color: #1e293b; padding: 25px 20px; border-radius: 4px; font-family: 'Courier New', Courier, monospace; font-size: 0.85rem; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15); line-height: 1.4;">
+            <div class="ticket-receipt" 
+                 th:with="totalVal=${esFraccion != null && esFraccion ? fraccionMonto : pedido.total}"
+                 style="background: white; color: #1e293b; padding: 25px 20px; border-radius: 4px; font-family: 'Courier New', Courier, monospace; font-size: 0.85rem; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15); line-height: 1.4;">
                 
                 <!-- Business Info -->
                 <div style="text-align: center; margin-bottom: 15px;">
@@ -30,7 +32,7 @@
                 <div style="font-size: 0.8rem; margin-bottom: 10px; color: #334155;">
                     <div style="display: flex; justify-content: space-between;">
                         <span>Fecha:</span>
-                        <span th:text="${#temporals.format(pedido.fechaPago, 'dd/MM/yyyy HH:mm')}">13/06/2026 14:45</span>
+                        <span th:text="${fechaDocumento != null ? #temporals.format(fechaDocumento, 'dd/MM/yyyy HH:mm') : ''}">13/06/2026 14:45</span>
                     </div>
                     <div style="display: flex; justify-content: space-between;">
                         <span>Mesa:</span>
@@ -93,11 +95,19 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr th:each="d : ${pedido.detalles}">
+                        <!-- Si es cuenta normal/total -->
+                        <tr th:if="${esFraccion == null || !esFraccion}" th:each="d : ${pedido.detalles}">
                             <td style="padding: 4px 0; vertical-align: top;" th:text="${d.cantidad}">1</td>
                             <td style="padding: 4px 0; vertical-align: top; word-break: break-all;" th:text="${d.plato.nombre}">Ceviche Mixto</td>
                             <td style="padding: 4px 0; vertical-align: top; text-align: right;" th:text="${#numbers.formatDecimal(d.precioUnitario, 1, 2)}">25.00</td>
                             <td style="padding: 4px 0; vertical-align: top; text-align: right;" th:text="${#numbers.formatDecimal(d.precioUnitario * d.cantidad, 1, 2)}">25.00</td>
+                        </tr>
+                        <!-- Si es cuenta dividida (fraccion) -->
+                        <tr th:if="${esFraccion != null && esFraccion}">
+                            <td style="padding: 4px 0; vertical-align: top;">1</td>
+                            <td style="padding: 4px 0; vertical-align: top; word-break: break-all;" th:text="'PAGO FRACCIONADO - CLIENTE ' + ${numeroCliente}">Pago Fraccionado</td>
+                            <td style="padding: 4px 0; vertical-align: top; text-align: right;" th:text="${#numbers.formatDecimal(totalVal, 1, 2)}">25.00</td>
+                            <td style="padding: 4px 0; vertical-align: top; text-align: right;" th:text="${#numbers.formatDecimal(totalVal, 1, 2)}">25.00</td>
                         </tr>
                     </tbody>
                 </table>
@@ -108,15 +118,15 @@
                 <div style="font-size: 0.8rem; margin-bottom: 10px; color: #334155;">
                     <div style="display: flex; justify-content: space-between;">
                         <span>OP. GRAVADA:</span>
-                        <span th:text="'S/ ' + ${#numbers.formatDecimal(pedido.total / 1.18, 1, 2)}">S/ 0.00</span>
+                        <span th:text="'S/ ' + ${#numbers.formatDecimal(totalVal / 1.18, 1, 2)}">S/ 0.00</span>
                     </div>
                     <div style="display: flex; justify-content: space-between;">
                         <span>I.G.V. (18%):</span>
-                        <span th:text="'S/ ' + ${#numbers.formatDecimal(pedido.total - (pedido.total / 1.18), 1, 2)}">S/ 0.00</span>
+                        <span th:text="'S/ ' + ${#numbers.formatDecimal(totalVal - (totalVal / 1.18), 1, 2)}">S/ 0.00</span>
                     </div>
                     <div style="display: flex; justify-content: space-between; font-size: 1.05rem; font-weight: bold; color: #0f172a; margin-top: 5px;">
                         <span>TOTAL A PAGAR:</span>
-                        <span th:text="'S/ ' + ${#numbers.formatDecimal(pedido.total, 1, 2)}">S/ 0.00</span>
+                        <span th:text="'S/ ' + ${#numbers.formatDecimal(totalVal, 1, 2)}">S/ 0.00</span>
                     </div>
                 </div>
                 
@@ -158,8 +168,15 @@
             <button class="btn btn-secondary" onclick="window.printReceipt()" style="display: flex; align-items: center; gap: 6px;">
                 <span>🖨️</span> Imprimir Ticket
             </button>
-            <button class="btn btn-primary" onclick="location.reload()" style="display: flex; align-items: center; gap: 6px;">
+            <button th:if="${esFraccion == null || !esFraccion}" class="btn btn-primary" onclick="location.reload()" style="display: flex; align-items: center; gap: 6px;">
                 <span>✅</span> Finalizar y Liberar Mesa
+            </button>
+            <button th:if="${esFraccion != null && esFraccion}" class="btn btn-primary" 
+                    th:hx-get="'/cajero/mesa/' + ${pedido.mesa.id} + '/panel'"
+                    hx-target="#cashier-right-panel"
+                    onclick="this.closest('.modal-overlay').remove()"
+                    style="display: flex; align-items: center; gap: 6px;">
+                <span>✅</span> Continuar Cobros
             </button>
         </div>
     </div>

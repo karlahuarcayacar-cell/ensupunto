@@ -78,6 +78,7 @@ public class CajeroController {
         model.addAttribute("tipoComprobante", tipoComprobante);
         model.addAttribute("docNum", docNum);
         model.addAttribute("metodoPago", metodoPago);
+        model.addAttribute("fechaDocumento", p.getFechaPago());
         
         model.addAttribute("dniCliente", dniCliente);
         model.addAttribute("nombreCliente", nombreClienteBoleta);
@@ -140,6 +141,7 @@ public class CajeroController {
         model.addAttribute("tipoComprobante", tipoComprobante);
         model.addAttribute("docNum", docNum);
         model.addAttribute("metodoPago", metodoPago);
+        model.addAttribute("fechaDocumento", pf.getFechaPago());
         
         model.addAttribute("dniCliente", dniCliente);
         model.addAttribute("nombreCliente", nombreClienteBoleta);
