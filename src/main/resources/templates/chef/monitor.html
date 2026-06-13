@@ -39,8 +39,8 @@
                     <span class="badge" 
                           th:classappend="${p.estado == 'cocina_preparacion' ? 'badge-cooking' : 'badge-waiting'}"
                           th:text="${p.estado == 'cocina_preparacion' ? 'Preparando' : 'En Cola'}"
-                          style="margin-left: 10px;">Estado</span>
-                    <span class="ticket-id" style="margin-left: auto;" th:text="'#' + ${p.id}">#ID</span>
+                          style="margin-left: 0px;">Estado</span>
+                    <span class="ticket-id" style="margin-left: 0px;" th:text="'#' + ${p.id}">#ID</span>
                 </div>
                 <div class="timer-display" 
                      th:data-time="${p.fechaCreacion}" 

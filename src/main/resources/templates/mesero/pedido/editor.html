@@ -1,7 +1,7 @@
 <div th:fragment="editor" id="view-pedido" class="fade-in" style="height: 100%;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">  
         <div>
-            <h1 style="font-size: 1.6rem; color: white;" th:text="${isModifying ? 'Modificar Pedido #' + pedidoId : 'Nuevo Pedido '}">Nuevo Pedido</h1>
+            <h1 style="font-size: 1.6rem; color: white;" th:text="${isModifying ? 'Modificar Pedido #' + pedidoId : 'Nuevo Pedido: Mesa ' + mesaId}">Nuevo Pedido</h1>
             <p style="color: var(--text-secondary); font-size: 0.85rem;">Selecciona los platos para la orden.</p>
         </div>
         <button class="btn btn-secondary" hx-get="/mesero/salon/fragment" hx-target="#mesero-app">← Volver al Salón</button>
