@@ -55,12 +55,38 @@ public class CajeroController {
     }
 
     @PostMapping("/pedidos/cobrar")
-    public String cobrarPedido(@RequestParam Integer pedidoId, @RequestParam String metodoPago, HttpSession session, Model model) {
+    public String cobrarPedido(
+            @RequestParam Integer pedidoId,
+            @RequestParam String metodoPago,
+            @RequestParam String tipoComprobante,
+            @RequestParam(required = false) String dniCliente,
+            @RequestParam(required = false) String nombreClienteBoleta,
+            @RequestParam(required = false) String rucCliente,
+            @RequestParam(required = false) String razonSocial,
+            @RequestParam(required = false) String direccionFactura,
+            @RequestParam(required = false) BigDecimal efectivoRecibido,
+            @RequestParam(required = false) BigDecimal vuelto,
+            HttpSession session,
+            Model model) {
         Usuario u = (Usuario) session.getAttribute("usuarioLogueado");
         Pedido p = pedidoService.cobrarPedidoRegular(pedidoId, u.getId(), metodoPago);
         
-        model.addAttribute("boletaNum", "B001-" + String.format("%06d", p.getId()));
-        model.addAttribute("total", p.getTotal());
+        String prefix = "boleta".equals(tipoComprobante) ? "B001-" : "F001-";
+        String docNum = prefix + String.format("%06d", p.getId());
+        
+        model.addAttribute("pedido", p);
+        model.addAttribute("tipoComprobante", tipoComprobante);
+        model.addAttribute("docNum", docNum);
+        model.addAttribute("metodoPago", metodoPago);
+        
+        model.addAttribute("dniCliente", dniCliente);
+        model.addAttribute("nombreCliente", nombreClienteBoleta);
+        model.addAttribute("rucCliente", rucCliente);
+        model.addAttribute("razonSocial", razonSocial);
+        model.addAttribute("direccionFactura", direccionFactura);
+        model.addAttribute("efectivoRecibido", efectivoRecibido != null ? efectivoRecibido : BigDecimal.ZERO);
+        model.addAttribute("vuelto", vuelto != null ? vuelto : BigDecimal.ZERO);
+        
         return "cajero/fragmentos/recibo :: comprobante";
     }
 

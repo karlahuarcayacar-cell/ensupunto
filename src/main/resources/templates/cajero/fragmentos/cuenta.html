@@ -1,12 +1,16 @@
-<div th:fragment="detalle" class="glass-card cashier-bill-panel" id="bill-panel">
+<div th:fragment="detalle" class="glass-card cashier-bill-panel" id="bill-panel" style="height: 100%; display: flex; flex-direction: column;">
     <h3 style="font-size: 1.2rem; margin-bottom: 15px;" th:text="'Cuenta - Pedido #' + ${pedido.id}">Cuenta</h3>
     
-    <div style="flex:1; overflow-y:auto; margin-bottom:15px; border-bottom:1px solid #333; padding-bottom:10px;">
-        <div th:each="d : ${pedido.detalles}" style="display:flex; justify-content:space-between; margin-bottom:5px;">
-            <span th:text="${d.cantidad} + 'x ' + ${d.plato.nombre}">1x Plato</span>
-            <span th:text="'S/ ' + ${#numbers.formatDecimal(d.precioUnitario * d.cantidad, 1, 2)}">S/ 0.00</span>
+    <div style="flex: 1; min-height: 180px; overflow-y: auto; margin-bottom: 15px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 10px; padding-right: 5px;">
+        <div th:each="d : ${pedido.detalles}" 
+             style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: rgba(255, 255, 255, 0.03); border-radius: 6px; margin-bottom: 6px; border: 1px solid rgba(255, 255, 255, 0.05);">
+            <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+                <span style="background: var(--accent); color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 0.8rem; flex-shrink: 0;" th:text="${d.cantidad} + 'x'">1x</span>
+                <span style="color: white; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" th:text="${d.plato.nombre}">Plato</span>
+            </div>
+            <span style="color: var(--accent); font-weight: 600; flex-shrink: 0; margin-left: 10px;" th:text="'S/ ' + ${#numbers.formatDecimal(d.precioUnitario * d.cantidad, 1, 2)}">S/ 0.00</span>
         </div>
-        <hr style="border-color:#333; margin:10px 0;">
+        <hr style="border-color: rgba(255, 255, 255, 0.1); margin: 10px 0;">
         <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:var(--text-secondary);">
             <span>I.G.V (18%):</span>
             <span th:text="'S/ ' + ${#numbers.formatDecimal(pedido.total - (pedido.total / 1.18), 1, 2)}">S/ 0.00</span>
@@ -15,50 +19,131 @@
     
     <h2 style="color:var(--accent); font-size:1.8rem; text-align:right; margin-bottom:15px;" th:text="'S/ ' + ${#numbers.formatDecimal(pedido.total, 1, 2)}">S/ 0.00</h2>
     
-    <form hx-post="/cajero/pedidos/cobrar" hx-target="#cashier-right-panel">
+    <form hx-post="/cajero/pedidos/cobrar" hx-target="#cashier-right-panel" style="display: flex; flex-direction: column; gap: 10px;">
         <input type="hidden" name="pedidoId" th:value="${pedido.id}">
-        <div class="payment-method-selector" style="margin-bottom:15px;">
+        <input type="hidden" name="efectivoRecibido" id="efectivo-recibido-hidden" value="0.00">
+        <input type="hidden" name="vuelto" id="vuelto-hidden" value="0.00">
+
+        <!-- Comprobante Type Selector -->
+        <label style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 2px;">Tipo de Comprobante:</label>
+        <div style="display: flex; gap: 8px; margin-bottom: 5px;">
+            <input type="radio" name="tipoComprobante" value="boleta" id="c-boleta" checked style="display: none;" onchange="toggleComprobanteFields('boleta')">
+            <label for="c-boleta" id="lbl-boleta" class="payment-method-btn active" style="flex: 1; padding: 10px; flex-direction: row; justify-content: center; align-items: center; gap: 6px; font-size: 0.85rem; margin-bottom: 0;">
+                <span>📄</span> Boleta
+            </label>
+            
+            <input type="radio" name="tipoComprobante" value="factura" id="c-factura" style="display: none;" onchange="toggleComprobanteFields('factura')">
+            <label for="c-factura" id="lbl-factura" class="payment-method-btn" style="flex: 1; padding: 10px; flex-direction: row; justify-content: center; align-items: center; gap: 6px; font-size: 0.85rem; margin-bottom: 0;">
+                <span>🏢</span> Factura
+            </label>
+        </div>
+
+        <!-- Boleta Fields -->
+        <div id="boleta-fields" style="padding: 12px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 8px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 5px;">
+            <div>
+                <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 3px;">DNI (Opcional):</label>
+                <input type="text" name="dniCliente" class="form-control" style="width: 100%; padding: 6px 10px; background: var(--bg-primary); border: 1px solid var(--border-color); color: white; border-radius: 4px; font-size: 0.85rem;" placeholder="8 dígitos" maxlength="8" pattern="\d{8}">
+            </div>
+            <div>
+                <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 3px;">Nombre Cliente (Opcional):</label>
+                <input type="text" name="nombreClienteBoleta" class="form-control" style="width: 100%; padding: 6px 10px; background: var(--bg-primary); border: 1px solid var(--border-color); color: white; border-radius: 4px; font-size: 0.85rem;" placeholder="Ej: Juan Pérez">
+            </div>
+        </div>
+
+        <!-- Factura Fields -->
+        <div id="factura-fields" style="padding: 12px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 8px; display: none; flex-direction: column; gap: 8px; margin-bottom: 5px;">
+            <div>
+                <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 3px;">RUC:</label>
+                <input type="text" id="ruc-input" name="rucCliente" class="form-control" style="width: 100%; padding: 6px 10px; background: var(--bg-primary); border: 1px solid var(--border-color); color: white; border-radius: 4px; font-size: 0.85rem;" placeholder="11 dígitos" maxlength="11" pattern="\d{11}">
+            </div>
+            <div>
+                <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 3px;">Razón Social:</label>
+                <input type="text" id="rs-input" name="razonSocial" class="form-control" style="width: 100%; padding: 6px 10px; background: var(--bg-primary); border: 1px solid var(--border-color); color: white; border-radius: 4px; font-size: 0.85rem;" placeholder="Ej: Mi Empresa S.A.C.">
+            </div>
+            <div>
+                <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 3px;">Dirección Fiscal (Opcional):</label>
+                <input type="text" name="direccionFactura" class="form-control" style="width: 100%; padding: 6px 10px; background: var(--bg-primary); border: 1px solid var(--border-color); color: white; border-radius: 4px; font-size: 0.85rem;" placeholder="Ej: Av. Larco 456, Miraflores">
+            </div>
+        </div>
+
+        <!-- Payment Method -->
+        <label style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 2px;">Método de Pago:</label>
+        <div class="payment-method-selector" style="margin-bottom: 5px;">
             <input type="radio" name="metodoPago" value="efectivo" id="m-efectivo" checked style="display:none;" onchange="toggleCashCalc(true)">
-            <label for="m-efectivo" class="payment-method-btn active" onclick="updateMethodUI(this)">Efectivo</label>
+            <label for="m-efectivo" id="lbl-efectivo" class="payment-method-btn active" style="margin-bottom:0;" onclick="updateMethodUI('efectivo')">Efectivo</label>
             
             <input type="radio" name="metodoPago" value="tarjeta" id="m-tarjeta" style="display:none;" onchange="toggleCashCalc(false)">
-            <label for="m-tarjeta" class="payment-method-btn" onclick="updateMethodUI(this)">Tarjeta</label>
+            <label for="m-tarjeta" id="lbl-tarjeta" class="payment-method-btn" style="margin-bottom:0;" onclick="updateMethodUI('tarjeta')">Tarjeta</label>
             
             <input type="radio" name="metodoPago" value="yape" id="m-yape" style="display:none;" onchange="toggleCashCalc(false)">
-            <label for="m-yape" class="payment-method-btn" onclick="updateMethodUI(this)">Yape/Plin</label>
+            <label for="m-yape" id="lbl-yape" class="payment-method-btn" style="margin-bottom:0;" onclick="updateMethodUI('yape')">Yape/Plin</label>
         </div>
         
-        <div id="cash-calculator" style="margin-bottom:15px; padding:10px; background:var(--bg-tertiary); border-radius:8px;">
-            <label style="font-size:0.85rem; color:var(--text-secondary);">Efectivo Recibido (S/):</label>
-            <input type="number" id="cash-received" class="form-control" style="width:100%; margin-top:5px;" placeholder="0.00" 
-                   th:oninput="'calculateChange(' + ${pedido.total} + ')'">
-            <div style="margin-top:10px; display:flex; justify-content:space-between; font-weight:bold;">
+        <!-- Cash Calculator -->
+        <div id="cash-calculator" style="padding: 12px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 8px; display: flex; flex-direction: column; gap: 8px;">
+            <div>
+                <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 3px;">Efectivo Recibido (S/):</label>
+                <input type="number" step="0.01" min="0" id="cash-received" class="form-control" style="width: 100%; padding: 6px 10px; background: var(--bg-primary); border: 1px solid var(--border-color); color: white; border-radius: 4px; font-size: 0.9rem;" placeholder="0.00" 
+                       th:oninput="'calculateChange(' + ${pedido.total} + ')'">
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 0.9rem; margin-top: 5px;">
                 <span>Vuelto:</span>
-                <span id="cash-change" style="color:#10b981;">S/ 0.00</span>
+                <span id="cash-change" style="color: #10b981;">S/ 0.00</span>
             </div>
         </div>
         
-        <button type="submit" class="btn btn-success" style="width:100%; padding:15px; font-size:1.1rem; margin-bottom:10px;">💰 Cobrar Total</button>
+        <button type="submit" class="btn btn-success" style="width: 100%; padding: 14px; font-size: 1.05rem; font-weight: bold; margin-top: 5px;">💰 Cobrar Total</button>
     </form>
     
-    <button class="btn btn-secondary" style="width:100%; padding:10px;" 
+    <button class="btn btn-secondary" style="width: 100%; padding: 10px; margin-top: 5px;" 
             th:hx-get="'/cajero/pedidos/' + ${pedido.id} + '/dividir/prompt'"
             hx-target="body" hx-swap="beforeend">⚖️ Dividir Cuenta</button>
 
     <script>
         function toggleCashCalc(show) {
-            document.getElementById('cash-calculator').style.display = show ? 'block' : 'none';
+            document.getElementById('cash-calculator').style.display = show ? 'flex' : 'none';
+            if (!show) {
+                document.getElementById('cash-received').value = '';
+                document.getElementById('efectivo-recibido-hidden').value = '0.00';
+                document.getElementById('vuelto-hidden').value = '0.00';
+                document.getElementById('cash-change').innerText = 'S/ 0.00';
+                document.getElementById('cash-change').style.color = '#10b981';
+            }
         }
-        function updateMethodUI(label) {
-            document.querySelectorAll('.payment-method-btn').forEach(b => b.classList.remove('active'));
-            label.classList.add('active');
+        function updateMethodUI(method) {
+            document.getElementById('lbl-efectivo').classList.toggle('active', method === 'efectivo');
+            document.getElementById('lbl-tarjeta').classList.toggle('active', method === 'tarjeta');
+            document.getElementById('lbl-yape').classList.toggle('active', method === 'yape');
+        }
+        function toggleComprobanteFields(type) {
+            const isBoleta = type === 'boleta';
+            document.getElementById('boleta-fields').style.display = isBoleta ? 'flex' : 'none';
+            document.getElementById('factura-fields').style.display = isBoleta ? 'none' : 'flex';
+            
+            document.getElementById('lbl-boleta').classList.toggle('active', isBoleta);
+            document.getElementById('lbl-factura').classList.toggle('active', !isBoleta);
+            
+            const rucInput = document.getElementById('ruc-input');
+            const rsInput = document.getElementById('rs-input');
+            if (isBoleta) {
+                rucInput.removeAttribute('required');
+                rsInput.removeAttribute('required');
+            } else {
+                rucInput.setAttribute('required', 'required');
+                rsInput.setAttribute('required', 'required');
+            }
         }
         function calculateChange(total) {
-            const received = parseFloat(document.getElementById('cash-received').value) || 0;
+            const receivedVal = document.getElementById('cash-received').value;
+            const received = parseFloat(receivedVal) || 0;
             const change = received - total;
             const el = document.getElementById('cash-change');
+            
             el.innerText = 'S/ ' + (change > 0 ? change.toFixed(2) : '0.00');
             el.style.color = change >= 0 ? '#10b981' : '#ef4444';
+            
+            document.getElementById('efectivo-recibido-hidden').value = received.toFixed(2);
+            document.getElementById('vuelto-hidden').value = (change > 0 ? change : 0).toFixed(2);
         }
     </script>
 </div>
