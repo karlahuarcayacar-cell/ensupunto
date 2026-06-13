@@ -40,6 +40,10 @@ public class PedidoServiceImpl implements PedidoService {
                     return pedidoRepository.save(p);
                 });
 
+        if ("dividido".equals(pedido.getEstado()) || "cuenta_pedida".equals(pedido.getEstado())) {
+            throw new IllegalStateException("No se pueden agregar platos a una mesa con cuenta dividida o en proceso de cobro.");
+        }
+
         BigDecimal total = pedido.getTotal();
         for (DetallePedido dp : detalles) {
             dp.setPedido(pedido);
@@ -107,6 +111,10 @@ public class PedidoServiceImpl implements PedidoService {
     public Pedido modificarPedido(Integer pedidoId, List<DetallePedido> nuevosDetalles, Integer adminId, String razonAuditoria) {
         Pedido pedido = pedidoRepository.findById(pedidoId).orElseThrow();
         
+        if ("dividido".equals(pedido.getEstado()) || "cuenta_pedida".equals(pedido.getEstado())) {
+            throw new IllegalStateException("No se puede modificar un pedido con cuenta dividida o en proceso de cobro.");
+        }
+
         // Audit trail if admin authorized something
         if (adminId != null) {
             Usuario admin = usuarioRepository.findById(adminId).orElseThrow();

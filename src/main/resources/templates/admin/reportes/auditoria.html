@@ -1,0 +1,31 @@
+<div th:fragment="content" class="glass-card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <div>
+            <h3 style="color:white; font-size:1.1rem;">Bitácora de Auditoría de Pedidos</h3>
+            <p style="color:var(--text-secondary); font-size:0.85rem;">Historial de modificaciones y anulaciones de platos autorizadas por administradores.</p>
+        </div>
+    </div>
+    <table class="admin-table">
+        <thead>
+            <tr>
+                <th>Cód. Pedido</th>
+                <th>Mesa</th>
+                <th>Administrador</th>
+                <th>Detalle de Modificación</th>
+                <th>Fecha y Hora</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:if="${#lists.isEmpty(modificaciones)}">
+                <td colspan="5" style="text-align:center; color:var(--text-secondary); padding:20px;">No se han registrado modificaciones o anulaciones.</td>
+            </tr>
+            <tr th:each="m : ${modificaciones}">
+                <td style="color:white; font-weight:700;" th:text="'#' + ${m.pedido.id}">#ID</td>
+                <td style="color:white;" th:text="${m.pedido.mesa.nombre}">Mesa 1</td>
+                <td><span class="role-pill admin" th:text="${m.administrador.nombre}">Admin</span></td>
+                <td style="color:var(--text-secondary); max-width:400px; word-break:break-word;" th:text="${m.detalle}">Detalle</td>
+                <td style="color:var(--text-secondary);" th:text="${#temporals.format(m.fechaCreacion, 'dd/MM/yyyy HH:mm:ss')}">Fecha</td>
+            </tr>
+        </tbody>
+    </table>
+</div>

@@ -49,13 +49,37 @@
                 overlay.querySelector('.modal-container').style.transform = 'scale(0.95)';
             }
 
+            // Custom HTMX Confirmation Dialog integration
+            document.body.addEventListener('htmx:confirm', function(evt) {
+                // Only intercept if the element has hx-confirm (a question exists)
+                if (!evt.detail.question) {
+                    return;
+                }
+                evt.preventDefault();
+                showCustomModal("Confirmar Acción", `<p style="color:white; margin:10px 0;">${evt.detail.question}</p>`, [
+                    {
+                        text: "Cancelar",
+                        class: "btn-secondary",
+                        onClick: function() {
+                            closeGlobalModal();
+                        }
+                    },
+                    {
+                        text: "Confirmar",
+                        class: "btn-primary",
+                        onClick: function() {
+                            closeGlobalModal();
+                            evt.detail.issueRequest(true);
+                        }
+                    }
+                ]);
+            });
+
             // Utils
             function formatCurrency(amount) {
                 return 'S/ ' + parseFloat(amount).toFixed(2);
             }
         </script>
-        <!-- CanvasJS for Charts -->
-        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     </th:block>
 </body>
 </html>

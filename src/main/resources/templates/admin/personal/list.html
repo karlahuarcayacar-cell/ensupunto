@@ -13,7 +13,7 @@
                     <th>Nombre del Empleado</th>
                     <th>Rol de Sistema</th>
                     <th>Nombre Usuario</th>
-                    <th>Contraseña</th>
+                    <th>Estado</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
@@ -22,15 +22,22 @@
                     <td style="color:white; font-weight:600;" th:text="${u.nombre}">Nombre</td>
                     <td><span class="role-pill" th:classappend="${u.rol}" th:text="${#strings.toUpperCase(u.rol)}">ROL</span></td>
                     <td style="color:var(--text-secondary)" th:text="${u.nombreUsuario}">Username</td>
-                    <td style="color:var(--text-muted); font-family:monospace;">···</td>
+                    <td>
+                        <span class="badge" th:classappend="${u.activo ? 'badge-free' : 'badge-cooking'}" 
+                              th:text="${u.activo ? 'Activo' : 'Inactivo'}">Estado</span>
+                    </td>
                     <td style="display:flex; gap:8px;">
                         <button class="btn btn-secondary btn-sm" 
                                 th:hx-get="'/admin/personal/editar/' + ${u.id}" 
                                 hx-target="body" hx-swap="beforeend">Editar</button>
-                        <button class="btn btn-danger btn-sm" 
+                        <button th:if="${u.activo}" class="btn btn-danger btn-sm" 
                                 th:hx-delete="'/admin/personal/' + ${u.id}"
                                 hx-confirm="¿Deseas desactivar este colaborador del sistema?"
-                                hx-target="#admin-content">Quitar</button>
+                                hx-target="#admin-content">Desactivar</button>
+                        <button th:if="${!u.activo}" class="btn btn-success btn-sm" 
+                                th:hx-put="'/admin/personal/' + ${u.id} + '/reactivar'"
+                                hx-confirm="¿Deseas reactivar este colaborador en el sistema?"
+                                hx-target="#admin-content">Reactivar</button>
                     </td>
                 </tr>
             </tbody>

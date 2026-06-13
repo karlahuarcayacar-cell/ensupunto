@@ -26,6 +26,14 @@
                      hx-swap="innerHTML">
                     <div th:replace="~{mesero/salon :: lista-mesas}"></div>
                 </div>
+
+                <script th:if="${errorModal}" th:inline="javascript">
+                    showCustomModal(
+                        "Acción Denegada", 
+                        "<p style='color:white;'>" + [[${errorModal}]] + "</p>", 
+                        [{ text: "Entendido", class: "btn-primary", onClick: function() { closeGlobalModal(); } }]
+                    );
+                </script>
             </div>
         </main>
     </div>

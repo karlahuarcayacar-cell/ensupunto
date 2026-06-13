@@ -7,6 +7,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class EnsupuntoApplication {
 
 	public static void main(String[] args) {
+		java.util.Locale.setDefault(new java.util.Locale("es", "PE"));
 		SpringApplication.run(EnsupuntoApplication.class, args);
 	}
 

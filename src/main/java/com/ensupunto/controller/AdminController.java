@@ -7,6 +7,7 @@ import com.ensupunto.service.PlatoService;
 import com.ensupunto.service.ReporteService;
 import com.ensupunto.service.UsuarioService;
 
+import com.ensupunto.repository.ModificacionPedidoRepository;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
@@ -30,6 +31,7 @@ public class AdminController {
     private final PedidoService pedidoService;
     private final PlatoService platoService;
     private final UsuarioService usuarioService;
+    private final ModificacionPedidoRepository modificacionRepository;
 
     @GetMapping
     public String adminPage(Model model, HttpSession session) {
@@ -85,7 +87,17 @@ public class AdminController {
         LocalDate fechaDesde = LocalDate.parse(desde);
         LocalDate fechaHasta = LocalDate.parse(hasta);
         model.addAttribute("pedidos", pedidoService.mapearPedidos(reporteService.obtenerHistorialPeriodo(fechaDesde, fechaHasta)));
-        return "admin/reportes/tabla_pedidos :: render(${pedidos}, 'Reporte por Período', 'Desde ' + " + desde + " + ' hasta ' + " + hasta + ", '/admin/reporte/periodo?desde=' + " + desde + " + '&hasta=' + " + hasta + ", 'personalizado')";
+        model.addAttribute("titulo", "Reporte por Período");
+        model.addAttribute("subtitulo", "Desde " + desde + " hasta " + hasta);
+        model.addAttribute("downloadUrl", "/admin/reporte/periodo?desde=" + desde + "&hasta=" + hasta);
+        model.addAttribute("previewType", "personalizado");
+        return "admin/reportes/tabla_pedidos :: render(pedidos=pedidos, titulo=titulo, subtitulo=subtitulo, downloadUrl=downloadUrl, previewType=previewType)";
+    }
+
+    @GetMapping("/reportes/auditoria")
+    public String reporteAuditoriaFragment(Model model) {
+        model.addAttribute("modificaciones", modificacionRepository.findAllWithPedidoAndAdmin());
+        return "admin/reportes/auditoria";
     }
 
     // --- PLATOS TAB ---
@@ -152,6 +164,10 @@ public class AdminController {
         if (existente != null) {
             existente.setNombre(usuario.getNombre());
             existente.setRol(usuario.getRol());
+            existente.setNombreUsuario(usuario.getNombreUsuario());
+            if (usuario.getContrasena() != null && !usuario.getContrasena().trim().isEmpty()) {
+                existente.setContrasena(usuario.getContrasena());
+            }
             usuarioService.guardar(existente);
         } else {
             usuario.setActivo(true);
@@ -163,6 +179,12 @@ public class AdminController {
     @DeleteMapping("/personal/{id}")
     public String eliminarUsuario(@PathVariable Integer id, Model model, @SessionAttribute("usuarioLogueado") Usuario u, @RequestHeader(value = "HX-Request", required = false) boolean hxRequest) {
         usuarioService.eliminar(id);
+        return personalTab(model, u, hxRequest);
+    }
+
+    @PutMapping("/personal/{id}/reactivar")
+    public String reactivarUsuario(@PathVariable Integer id, Model model, @SessionAttribute("usuarioLogueado") Usuario u, @RequestHeader(value = "HX-Request", required = false) boolean hxRequest) {
+        usuarioService.reactivar(id);
         return personalTab(model, u, hxRequest);
     }
 

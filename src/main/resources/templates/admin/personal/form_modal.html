@@ -13,12 +13,14 @@
                 </div>
                 <div class="form-group" style="margin-bottom:15px;">
                     <label style="display:block; margin-bottom:5px;">Nombre de Usuario</label>
-                    <input type="text" name="nombreUsuario" class="form-control" th:value="${usuario.nombreUsuario}" th:disabled="${usuario.id != null}" required style="width:100%;">
-                    <input type="hidden" name="nombreUsuario" th:if="${usuario.id != null}" th:value="${usuario.nombreUsuario}">
+                    <input type="text" name="nombreUsuario" class="form-control" th:value="${usuario.nombreUsuario}" required style="width:100%;">
                 </div>
-                <div class="form-group" style="margin-bottom:15px;" th:if="${usuario.id == null}">
+                <div class="form-group" style="margin-bottom:15px;">
                     <label style="display:block; margin-bottom:5px;">Contraseña</label>
-                    <input type="password" name="contrasena" class="form-control" required style="width:100%;">
+                    <input type="password" name="contrasena" class="form-control" 
+                           th:required="${usuario.id == null}" 
+                           th:placeholder="${usuario.id != null ? 'Dejar en blanco para no cambiar' : ''}" 
+                           style="width:100%;">
                 </div>
                 <div class="form-group" style="margin-bottom:15px;">
                     <label style="display:block; margin-bottom:5px;">Rol</label>

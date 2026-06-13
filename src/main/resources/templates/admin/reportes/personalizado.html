@@ -1,7 +1,10 @@
 <div th:fragment="content">
     <div class="glass-card">
         <h3 style="color:white; font-size:1.1rem; margin-bottom:15px;">Reporte por Período</h3>
-        <form hx-get="/admin/reportes/personalizado/buscar" hx-target="#periodo-resultado" style="display:flex; gap:15px; align-items:center; flex-wrap:wrap; margin-bottom:20px;">
+        <form hx-get="/admin/reportes/personalizado/buscar" 
+              hx-target="#periodo-resultado" 
+              hx-indicator="#buscar-loading" 
+              style="display:flex; gap:15px; align-items:center; flex-wrap:wrap; margin-bottom:20px;">
             <div>
                 <label style="color:var(--text-secondary); font-size:0.8rem; display:block; margin-bottom:5px;">Desde</label>
                 <input type="date" name="desde" id="fecha-desde" class="date-input" required>
@@ -14,6 +17,10 @@
                 <button type="submit" class="btn btn-primary">🔍 Buscar</button>
             </div>
         </form>
+        
+        <div id="buscar-loading" class="htmx-indicator" style="color: var(--accent); font-weight: bold; margin-bottom: 15px; font-size: 0.9rem;">
+            ⏳ Filtrando registros y preparando reporte... por favor espere.
+        </div>
         
         <div id="periodo-resultado">
             <!-- Los resultados de la búsqueda aparecerán aquí -->

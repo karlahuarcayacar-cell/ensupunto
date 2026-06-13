@@ -16,4 +16,11 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addInterceptor(authInterceptor)
                 .addPathPatterns("/**"); // Intercepts all
     }
+
+    @org.springframework.context.annotation.Bean
+    public org.springframework.web.servlet.LocaleResolver localeResolver() {
+        org.springframework.web.servlet.i18n.SessionLocaleResolver slr = new org.springframework.web.servlet.i18n.SessionLocaleResolver();
+        slr.setDefaultLocale(new java.util.Locale("es", "PE"));
+        return slr;
+    }
 }

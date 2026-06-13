@@ -100,6 +100,13 @@ public class MeseroController {
 
     @GetMapping("/pedido/nuevo/{mesaId}")
     public String nuevoPedido(@PathVariable Integer mesaId, @ModelAttribute("carrito") CarritoDTO carrito, Model model) {
+        Pedido p = pedidoService.buscarPedidoActivoPorMesa(mesaId);
+        if (p != null && ("dividido".equals(p.getEstado()) || "cuenta_pedida".equals(p.getEstado()))) {
+            getSalonFragment(model);
+            model.addAttribute("errorModal", "No se pueden agregar platos a una mesa con cuenta dividida o en proceso de cobro.");
+            return "mesero/salon :: salon-view";
+        }
+
         Mesa mesa = mesaService.listarTodas().stream().filter(m -> m.getId().equals(mesaId)).findFirst().orElse(null);
         carrito.setMesaId(mesaId);
         carrito.setNombreMesa(mesa != null ? mesa.getNombre() : "Mesa " + mesaId);
@@ -113,6 +120,12 @@ public class MeseroController {
     @GetMapping("/pedido/editar/{pedidoId}")
     public String editarPedido(@PathVariable Integer pedidoId, @ModelAttribute("carrito") CarritoDTO carrito, Model model) {
         Pedido p = pedidoService.buscarPorId(pedidoId);
+        if (p != null && ("dividido".equals(p.getEstado()) || "cuenta_pedida".equals(p.getEstado()))) {
+            getSalonFragment(model);
+            model.addAttribute("errorModal", "No se puede modificar un pedido con cuenta dividida o en proceso de cobro.");
+            return "mesero/salon :: salon-view";
+        }
+
         carrito.setMesaId(p.getMesa().getId());
         carrito.setNombreMesa(p.getMesa().getNombre());
         carrito.setPedidoId(pedidoId);
@@ -188,10 +201,17 @@ public class MeseroController {
             return dp;
         }).collect(Collectors.toList());
 
-        if (carrito.isModifying()) {
-            pedidoService.modificarPedido(carrito.getPedidoId(), detalles, null, "Modificación desde UI");
-        } else {
-            pedidoService.crearPedido(carrito.getMesaId(), u.getId(), detalles);
+        try {
+            if (carrito.isModifying()) {
+                pedidoService.modificarPedido(carrito.getPedidoId(), detalles, null, "Modificación desde UI");
+            } else {
+                pedidoService.crearPedido(carrito.getMesaId(), u.getId(), detalles);
+            }
+        } catch (IllegalStateException e) {
+            getSalonFragment(model);
+            model.addAttribute("errorModal", e.getMessage());
+            carrito.getItems().clear();
+            return "mesero/salon :: salon-view";
         }
         
         carrito.getItems().clear();

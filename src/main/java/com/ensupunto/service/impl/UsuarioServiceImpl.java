@@ -42,4 +42,12 @@ public class UsuarioServiceImpl implements UsuarioService {
             usuarioRepository.save(usuario);
         });
     }
+
+    @Override
+    public void reactivar(Integer id) {
+        usuarioRepository.findById(id).ifPresent(usuario -> {
+            usuario.setActivo(true);
+            usuarioRepository.save(usuario);
+        });
+    }
 }

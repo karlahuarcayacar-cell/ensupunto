@@ -64,7 +64,24 @@
             .cat-pill {
                 padding: 3px 10px; border-radius: 50px;
                 font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
-                background: rgba(255,102,0,0.15); color: var(--accent);
+            }
+            .cat-pill.entradas { background: rgba(16,185,129,0.15); color: #34d399; }
+            .cat-pill.segundos { background: rgba(239,68,68,0.15); color: #f87171; }
+            .cat-pill.bebidas { background: rgba(59,130,246,0.15); color: #60a5fa; }
+            .cat-pill.postres { background: rgba(139,92,246,0.15); color: #a78bfa; }
+
+            /* HTMX Request Loading Feedback */
+            #admin-content.htmx-request, #reporte-tab-content.htmx-request {
+                opacity: 0.5;
+                filter: blur(1.5px);
+                pointer-events: none;
+                transition: all 0.2s ease;
+            }
+            .htmx-indicator {
+                display: none;
+            }
+            .htmx-request .htmx-indicator, .htmx-request.htmx-indicator {
+                display: block;
             }
         </style>
 
@@ -81,6 +98,57 @@
     function updateActiveTab(btn) {
         document.querySelectorAll('.admin-main-tab').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
+    }
+
+    function previsualizarReporte(type) {
+        let url = '';
+        if (type === 'dia') {
+            url = '/admin/reporte/ventas';
+        } else if (type === 'historico') {
+            url = '/admin/reporte/historico';
+        } else if (type === 'personalizado') {
+            const desdeEl = document.getElementById('fecha-desde');
+            const hastaEl = document.getElementById('fecha-hasta');
+            const desde = desdeEl ? desdeEl.value : '';
+            const hasta = hastaEl ? hastaEl.value : '';
+            if (!desde || !hasta) {
+                showCustomModal(
+                    "Alerta", 
+                    "<p style='color:white;'>Por favor, seleccione un rango de fechas válido antes de previsualizar el reporte.</p>", 
+                    [{ text: "Entendido", class: "btn-primary", onClick: closeGlobalModal }]
+                );
+                return;
+            }
+            url = `/admin/reporte/periodo?desde=${desde}&hasta=${hasta}`;
+        }
+
+        const bodyHtml = `
+            <div style="height: 550px; width: 100%; display: flex; flex-direction: column;">
+                <div id="pdf-preview-loading" style="color: var(--accent); text-align: center; padding: 20px 0; font-weight: bold;">
+                    ⏳ Generando previsualización del PDF...
+                </div>
+                <iframe src="${url}" style="width: 100%; height: 100%; border: none; border-radius: 8px; display: none;" onload="document.getElementById('pdf-preview-loading').style.display='none'; this.style.display='block';"></iframe>
+            </div>
+        `;
+
+        showCustomModal(
+            "Vista Previa del Reporte", 
+            bodyHtml, 
+            [
+                { 
+                    text: "🖨️ Imprimir Reporte", 
+                    class: "btn-primary", 
+                    onClick: function() {
+                        const iframeEl = document.querySelector("#global-modal-overlay iframe");
+                        if (iframeEl) {
+                            iframeEl.contentWindow.focus();
+                            iframeEl.contentWindow.print();
+                        }
+                    } 
+                },
+                { text: "Cerrar", class: "btn-secondary", onClick: closeGlobalModal }
+            ]
+        );
     }
 </script>
 </body>
