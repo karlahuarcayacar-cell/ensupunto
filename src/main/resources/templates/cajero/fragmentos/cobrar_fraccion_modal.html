@@ -6,7 +6,7 @@
             <button class="modal-close" onclick="this.closest('.modal-overlay').remove()" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.5rem; width: 32px; height: 32px; border-radius: 50%;">&times;</button>
         </div>
         
-        <form th:hx-post="'/cajero/fracciones/' + ${fraccion.id} + '/pagar'" hx-target="#cashier-right-panel" hx-on::after-request="this.closest('.modal-overlay').remove()" style="display: flex; flex-direction: column; margin: 0;">
+        <form th:hx-post="'/cajero/fracciones/' + ${fraccion.id} + '/pagar'" hx-target="body" hx-swap="beforeend" hx-on::after-request="this.closest('.modal-overlay').remove()" style="display: flex; flex-direction: column; margin: 0;">
             <div class="modal-body" style="padding: 24px; display: flex; flex-direction: column; gap: 12px; max-height: 60vh; overflow-y: auto;">
                 
                 <!-- Display Amount -->

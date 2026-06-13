@@ -19,7 +19,7 @@
     
     <h2 style="color:var(--accent); font-size:1.8rem; text-align:right; margin-bottom:15px;" th:text="'S/ ' + ${#numbers.formatDecimal(pedido.total, 1, 2)}">S/ 0.00</h2>
     
-    <form hx-post="/cajero/pedidos/cobrar" hx-target="#cashier-right-panel" style="display: flex; flex-direction: column; gap: 10px;">
+    <form hx-post="/cajero/pedidos/cobrar" hx-target="body" hx-swap="beforeend" style="display: flex; flex-direction: column; gap: 10px;">
         <input type="hidden" name="pedidoId" th:value="${pedido.id}">
         <input type="hidden" name="efectivoRecibido" id="efectivo-recibido-hidden" value="0.00">
         <input type="hidden" name="vuelto" id="vuelto-hidden" value="0.00">
