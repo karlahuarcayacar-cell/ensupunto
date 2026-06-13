@@ -1,0 +1,39 @@
+<div th:fragment="content" class="admin-section">
+    <div class="glass-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <div>
+                <h3 style="color:white; font-size:1.1rem;">Carta del Menú</h3>
+                <p style="color:var(--text-secondary); font-size:0.85rem;">Agrega, modifica o elimina platos de la oferta del restaurante.</p>
+            </div>
+            <button class="btn btn-primary" hx-get="/admin/platos/nuevo" hx-target="body" hx-swap="beforeend">+ Nuevo Plato</button>
+        </div>
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Nombre del Plato</th>
+                    <th>Categoría</th>
+                    <th>Descripción</th>
+                    <th>Precio</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="p : ${platos}">
+                    <td style="color:white; font-weight:600;" th:text="${p.nombre}">Nombre</td>
+                    <td><span class="cat-pill" th:text="${#strings.toUpperCase(p.categoria)}">CATEGORIA</span></td>
+                    <td style="color:var(--text-secondary); font-size:0.82rem;" th:text="${p.descripcion}">Descripción</td>
+                    <td style="color:var(--accent); font-weight:700;" th:text="${#numbers.formatCurrency(p.precio)}">S/ 0.00</td>
+                    <td style="display:flex; gap:8px;">
+                        <button class="btn btn-secondary btn-sm" 
+                                th:hx-get="'/admin/platos/editar/' + ${p.id}" 
+                                hx-target="body" hx-swap="beforeend">Editar</button>
+                        <button class="btn btn-danger btn-sm" 
+                                th:hx-delete="'/admin/platos/' + ${p.id}"
+                                hx-confirm="¿Estás segura de que deseas eliminar este plato?"
+                                hx-target="#admin-content">Eliminar</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>

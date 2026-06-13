@@ -1,0 +1,27 @@
+<div th:fragment="detalle" class="glass-card cashier-bill-panel" id="split-panel" style="display:flex;">
+    <h3 style="font-size: 1.2rem; margin-bottom: 15px;">Clientes (Cuenta Dividida)</h3>
+    <div id="split-list" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:10px;">
+        <div th:each="f : ${fracciones}" class="glass-card" 
+             style="padding:10px; display:flex; justify-content:space-between; align-items:center;"
+             th:styleappend="'border:1px solid ' + (${f.pagado} ? '#10b981' : '#2e3d60')">
+            <div>
+                <div style="font-weight:bold;" th:text="'Cliente ' + ${f.numeroCliente}">Cliente X</div>
+                <div style="font-size:0.8rem; color:var(--text-secondary);" th:text="'Monto: S/ ' + ${#numbers.formatDecimal(f.monto, 1, 2)}">Monto</div>
+                <div th:if="${f.pagado}" style="font-size:0.7rem; color:#10b981;" th:text="'Pagado (' + ${f.metodoPago} + ') - ' + ${f.numeroBoleta}">Boleta</div>
+            </div>
+            <button th:if="${!f.pagado}" class="btn btn-primary btn-sm"
+                    th:hx-post="'/cajero/fracciones/' + ${f.id} + '/pagar'"
+                    hx-target="#cashier-right-panel">Cobrar</button>
+            <span th:if="${f.pagado}">✅</span>
+        </div>
+    </div>
+    <div style="margin-top:15px; border-top:1px solid #333; padding-top:10px;">
+        <div style="display:flex; justify-content:space-between; color:var(--text-secondary);">
+            <span>Saldo Pendiente:</span>
+            <span id="split-pending" style="color:var(--accent); font-weight:bold;" 
+                  th:text="'S/ ' + ${#numbers.formatDecimal(saldoPendiente, 1, 2)}">S/ 0.00</span>
+        </div>
+    </div>
+    
+    <div th:if="${saldoPendiente == 0}" hx-trigger="load" hx-get="/cajero/notificar/mesa-liberada" hx-target="body" hx-swap="beforeend"></div>
+</div>

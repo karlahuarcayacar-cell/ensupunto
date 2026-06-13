@@ -3,6 +3,8 @@
 <body>
     <th:block th:fragment="commonScripts">
         <th:block th:replace="~{fragments/modal :: globalModal}"></th:block>
+        <!-- HTMX -->
+        <script src="https://unpkg.com/htmx.org@1.9.10"></script>
         <script>
             // Global Modal Logic
             function showCustomModal(title, bodyHtml, buttons) {

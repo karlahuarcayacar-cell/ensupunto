@@ -1,0 +1,39 @@
+<div th:fragment="editor" id="view-pedido" class="fade-in" style="height: 100%;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">  
+        <div>
+            <h1 style="font-size: 1.6rem; color: white;" th:text="${isModifying ? 'Modificar Pedido #' + pedidoId : 'Nuevo Pedido '}">Nuevo Pedido</h1>
+            <p style="color: var(--text-secondary); font-size: 0.85rem;">Selecciona los platos para la orden.</p>
+        </div>
+        <button class="btn btn-secondary" hx-get="/mesero/salon/fragment" hx-target="#mesero-app">← Volver al Salón</button>
+    </div>
+
+    <div class="order-creator-container">
+        <nav class="categories-nav" hx-target="#dishes-grid" hx-push-url="false">
+            <button class="category-tab-btn" th:classappend="${activeCat == 'entradas' ? 'active' : ''}" 
+                    hx-get="/mesero/pedido/catalogo/entradas" onclick="updateCatUI(this)">🥗 Entradas</button>
+            <button class="category-tab-btn" th:classappend="${activeCat == 'segundos' ? 'active' : ''}" 
+                    hx-get="/mesero/pedido/catalogo/segundos" onclick="updateCatUI(this)">🍲 Segundos</button>
+            <button class="category-tab-btn" th:classappend="${activeCat == 'bebidas' ? 'active' : ''}" 
+                    hx-get="/mesero/pedido/catalogo/bebidas" onclick="updateCatUI(this)">🥤 Bebidas</button>
+            <button class="category-tab-btn" th:classappend="${activeCat == 'postres' ? 'active' : ''}" 
+                    hx-get="/mesero/pedido/catalogo/postres" onclick="updateCatUI(this)">🍰 Postres</button>
+        </nav>
+
+        <div class="dishes-catalog-container" id="dishes-catalog">
+            <div class="dishes-grid" id="dishes-grid">
+                <div th:replace="~{mesero/pedido/catalogo :: lista}"></div>
+            </div>
+        </div>
+
+        <div class="glass-card order-summary-panel" id="order-summary-panel">
+            <div th:replace="~{mesero/pedido/carrito :: detalle}"></div>
+        </div>
+    </div>
+
+    <script>
+        function updateCatUI(btn) {
+            document.querySelectorAll('.category-tab-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+    </script>
+</div>

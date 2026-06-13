@@ -1,0 +1,14 @@
+<div th:fragment="modal" class="modal-overlay" style="backdrop-filter: blur(8px); opacity: 1; pointer-events: auto; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(10, 14, 23, 0.8); z-index: 2000; display: flex; align-items: center; justify-content: center;">
+    <div class="modal-container" style="background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-lg); width: 90%; max-width: 450px; box-shadow: var(--shadow-lg); display: flex; flex-direction: column;">
+        <div class="modal-header" style="padding: 20px 24px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
+            <h3 class="modal-title" style="font-size: 1.25rem; color: white;">Mesa Liberada</h3>
+            <button class="modal-close" onclick="location.reload()" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.5rem; width: 32px; height: 32px; border-radius: 50%;">&times;</button>
+        </div>
+        <div class="modal-body" style="padding: 24px; color: var(--text-secondary);">
+            <p>¡Toda la cuenta ha sido pagada exitosamente! La mesa ahora está libre.</p>
+        </div>
+        <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid var(--border-color); background-color: rgba(10, 14, 23, 0.4); display: flex; align-items: center; justify-content: flex-end; gap: 12px;">
+            <button class="btn btn-primary" onclick="location.reload()">Finalizar</button>
+        </div>
+    </div>
+</div>

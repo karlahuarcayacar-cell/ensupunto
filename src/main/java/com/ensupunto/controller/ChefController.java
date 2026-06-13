@@ -5,7 +5,6 @@ import com.ensupunto.entity.Usuario;
 import com.ensupunto.service.PedidoService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -25,26 +24,30 @@ public class ChefController {
         if (u == null || !u.getRol().equals("chef")) return "redirect:/login";
         
         model.addAttribute("usuario", u);
-        return "chef";
+        return "chef/monitor";
+    }
+
+    @GetMapping("/fragment/pedidos")
+    public String getPedidosFragment(Model model) {
+        model.addAttribute("pedidos", pedidoService.listarPedidosParaCocina());
+        return "chef/monitor :: lista-pedidos";
+    }
+
+    @PutMapping("/api/pedidos/{id}/preparar")
+    public String preparar(@PathVariable Integer id, Model model) {
+        pedidoService.prepararPedido(id);
+        return getPedidosFragment(model);
+    }
+
+    @PutMapping("/api/pedidos/{id}/terminar")
+    public String terminar(@PathVariable Integer id, Model model) {
+        pedidoService.terminarPedido(id);
+        return getPedidosFragment(model);
     }
 
     @GetMapping("/api/pedidos")
     @ResponseBody
     public List<Pedido> getPedidosCocina() {
         return pedidoService.listarPedidosParaCocina();
-    }
-
-    @PutMapping("/api/pedidos/{id}/preparar")
-    @ResponseBody
-    public ResponseEntity<?> preparar(@PathVariable Integer id) {
-        Pedido p = pedidoService.prepararPedido(id);
-        return ResponseEntity.ok(p);
-    }
-
-    @PutMapping("/api/pedidos/{id}/terminar")
-    @ResponseBody
-    public ResponseEntity<?> terminar(@PathVariable Integer id) {
-        Pedido p = pedidoService.terminarPedido(id);
-        return ResponseEntity.ok(p);
     }
 }

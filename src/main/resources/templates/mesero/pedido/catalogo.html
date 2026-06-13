@@ -1,0 +1,14 @@
+<div th:fragment="lista" th:remove="tag">
+    <div th:each="plato : ${platos}" class="glass-card dish-item-card dish-item" style="display:flex;">
+        <div>
+            <div class="dish-item-name" th:text="${plato.nombre}">Plato</div>
+            <p class="dish-item-desc" th:text="${plato.descripcion}">Desc</p>
+        </div>
+        <div class="dish-item-footer">
+            <span class="dish-item-price" th:text="'S/ ' + ${#numbers.formatDecimal(plato.precio, 1, 2)}">Precio</span>
+            <button class="btn btn-primary btn-sm" 
+                    th:hx-post="'/mesero/pedido/carrito/agregar/' + ${plato.id}"
+                    hx-target="#order-summary-panel">+ Agregar</button>
+        </div>
+    </div>
+</div>

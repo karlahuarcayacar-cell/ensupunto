@@ -1,6 +1,5 @@
 package com.ensupunto.controller;
 
-import com.ensupunto.entity.Mesa;
 import com.ensupunto.entity.PagoFraccionado;
 import com.ensupunto.entity.Pedido;
 import com.ensupunto.entity.Usuario;
@@ -8,13 +7,12 @@ import com.ensupunto.service.MesaService;
 import com.ensupunto.service.PedidoService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
+import java.math.BigDecimal;
 
 @Controller
 @RequestMapping("/cajero")
@@ -34,38 +32,74 @@ public class CajeroController {
         return "cajero";
     }
 
-    @GetMapping("/api/mesas/{id}/pedido")
-    @ResponseBody
-    public ResponseEntity<?> getPedidoMesa(@PathVariable Integer id) {
+    @GetMapping("/mesa/{id}/panel")
+    public String getMesaPanel(@PathVariable Integer id, Model model) {
         Pedido p = pedidoService.buscarPedidoActivoPorMesa(id);
-        if (p == null) return ResponseEntity.notFound().build();
-        return ResponseEntity.ok(p);
+        if (p == null) {
+            return "cajero :: #cashier-right-panel"; // Retornar vacío o aviso
+        }
+        
+        if ("dividido".equals(p.getEstado())) {
+            List<PagoFraccionado> fracciones = p.getPagosFraccionados();
+            BigDecimal saldo = fracciones.stream()
+                    .filter(f -> !f.getPagado())
+                    .map(PagoFraccionado::getMonto)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            model.addAttribute("fracciones", fracciones);
+            model.addAttribute("saldoPendiente", saldo);
+            return "cajero/fragmentos/dividida :: detalle";
+        }
+        
+        model.addAttribute("pedido", p);
+        return "cajero/fragmentos/cuenta :: detalle";
     }
 
-    @PostMapping("/api/pedidos/{id}/cobrar")
-    @ResponseBody
-    public ResponseEntity<?> cobrarPedido(@PathVariable Integer id, @RequestParam String metodoPago, HttpSession session) {
+    @PostMapping("/pedidos/cobrar")
+    public String cobrarPedido(@RequestParam Integer pedidoId, @RequestParam String metodoPago, HttpSession session, Model model) {
         Usuario u = (Usuario) session.getAttribute("usuarioLogueado");
-        Pedido p = pedidoService.cobrarPedidoRegular(id, u.getId(), metodoPago);
-        return ResponseEntity.ok(p);
+        Pedido p = pedidoService.cobrarPedidoRegular(pedidoId, u.getId(), metodoPago);
+        
+        model.addAttribute("boletaNum", "B001-" + String.format("%06d", p.getId()));
+        model.addAttribute("total", p.getTotal());
+        return "cajero/fragmentos/recibo :: comprobante";
     }
 
-    @PostMapping("/api/pedidos/{id}/dividir")
-    @ResponseBody
-    public List<PagoFraccionado> dividirCuenta(@PathVariable Integer id, @RequestParam int nPartes) {
-        return pedidoService.dividirCuenta(id, nPartes);
+    @GetMapping("/pedidos/{id}/dividir/prompt")
+    public String promptDividir(@PathVariable Integer id, Model model) {
+        model.addAttribute("pedidoId", id);
+        return "cajero/fragmentos/dividir_modal :: modal";
     }
 
-    @GetMapping("/api/pedidos/{id}/fracciones")
-    @ResponseBody
-    public List<PagoFraccionado> getFracciones(@PathVariable Integer id) {
-        return pedidoService.buscarPorId(id).getPagosFraccionados();
+    @PostMapping("/pedidos/{id}/dividir")
+    public String dividirCuenta(@PathVariable Integer id, @RequestParam int nPartes, Model model) {
+        List<PagoFraccionado> fracciones = pedidoService.dividirCuenta(id, nPartes);
+        BigDecimal saldo = fracciones.stream()
+                .filter(f -> !f.getPagado())
+                .map(PagoFraccionado::getMonto)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        model.addAttribute("fracciones", fracciones);
+        model.addAttribute("saldoPendiente", saldo);
+        return "cajero/fragmentos/dividida :: detalle";
     }
 
-    @PostMapping("/api/fracciones/{id}/pagar")
-    @ResponseBody
-    public PagoFraccionado pagarFraccion(@PathVariable Integer id, @RequestParam String metodoPago, HttpSession session) {
+    @PostMapping("/fracciones/{id}/pagar")
+    public String pagarFraccion(@PathVariable Integer id, @RequestParam(defaultValue = "efectivo") String metodoPago, HttpSession session, Model model) {
         Usuario u = (Usuario) session.getAttribute("usuarioLogueado");
-        return pedidoService.registrarPagoFraccion(id, metodoPago, u.getId());
+        PagoFraccionado pf = pedidoService.registrarPagoFraccion(id, metodoPago, u.getId());
+        Pedido p = pf.getPedido();
+        
+        List<PagoFraccionado> fracciones = p.getPagosFraccionados();
+        BigDecimal saldo = fracciones.stream()
+                .filter(f -> !f.getPagado())
+                .map(PagoFraccionado::getMonto)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        model.addAttribute("fracciones", fracciones);
+        model.addAttribute("saldoPendiente", saldo);
+        return "cajero/fragmentos/dividida :: detalle";
+    }
+
+    @GetMapping("/notificar/mesa-liberada")
+    public String notificarMesaLiberada() {
+        return "cajero/fragmentos/notificacion_liberada :: modal";
     }
 }

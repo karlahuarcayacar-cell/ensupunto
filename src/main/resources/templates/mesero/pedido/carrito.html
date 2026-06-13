@@ -1,0 +1,43 @@
+<div th:fragment="detalle" th:remove="tag">
+    <h3 style="font-size: 1.1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">Detalle del Pedido</h3>
+    
+    <div class="summary-items-list" id="order-summary-items">
+        <div th:if="${#lists.isEmpty(carrito.items)}" style="text-align:center; padding:20px; color:gray;">Pedido vacío</div>
+        
+        <div th:each="item : ${carrito.items}" class="summary-item fade-in">
+            <div class="summary-item-header">
+                <span th:text="${item.nombre}">Plato</span>
+                <span th:text="'S/ ' + ${#numbers.formatDecimal(item.precio * item.cantidad, 1, 2)}">S/ 0.00</span>
+            </div>
+            <div class="summary-item-controls" style="margin-top:5px;">
+                <div class="qty-controls">
+                    <button class="qty-btn" th:hx-post="'/mesero/pedido/carrito/quitar/' + ${item.platoId}" hx-target="#order-summary-panel">-</button>
+                    <span class="qty-val" th:text="${item.cantidad}">1</span>
+                    <button class="qty-btn" th:hx-post="'/mesero/pedido/carrito/agregar/' + ${item.platoId}" hx-target="#order-summary-panel">+</button>
+                </div>
+            </div>
+            <div style="margin-top:5px;">
+                <span th:if="${item.nota != null and !item.nota.empty}" style="font-size:12px; color:orange;" th:text="'📝 ' + ${item.nota}">Nota</span>
+                <button th:if="${item.nota == null or item.nota.empty}" 
+                        th:hx-get="'/mesero/pedido/carrito/nota/' + ${item.platoId}" 
+                        hx-target="body" hx-swap="beforeend"
+                        style="font-size:12px; border:none; background:none; color:lightblue; cursor:pointer;">+ Agregar nota</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="summary-totals-box">
+        <div class="summary-totals-row grand-total">
+            <div style="width:100%">
+                <div style="font-size:0.8rem; color:var(--text-secondary); text-align:right;" th:text="'Subtotal: S/ ' + ${#numbers.formatDecimal(carrito.subtotal, 1, 2)}">Subtotal</div>
+                <div style="font-size:0.8rem; color:var(--text-secondary); text-align:right;" th:text="'IGV (18%): S/ ' + ${#numbers.formatDecimal(carrito.igv, 1, 2)}">IGV</div>
+                <div style="font-size:1.2rem; color:var(--accent); text-align:right; margin-top:5px;" th:text="'Total: S/ ' + ${#numbers.formatDecimal(carrito.total, 1, 2)}">Total</div>
+            </div>
+        </div>
+    </div>
+    
+    <button class="btn btn-primary" id="btn-send-to-kitchen" style="width: 100%; padding: 12px;" 
+            th:disabled="${#lists.isEmpty(carrito.items)}"
+            hx-post="/mesero/pedido/finalizar"
+            hx-target="#mesero-app">🔥 Enviar a Cocina</button>
+</div>

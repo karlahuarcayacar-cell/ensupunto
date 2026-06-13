@@ -1,0 +1,43 @@
+<div th:fragment="render(pedidos, titulo, subtitulo, downloadUrl, previewType)">
+    <div class="glass-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <div>
+                <h3 style="color:white; font-size:1.1rem;" th:text="${titulo}">Título</h3>
+                <p style="color:var(--text-secondary); font-size:0.85rem;" th:text="${subtitulo}">Subtítulo</p>
+            </div>
+            <div style="display:flex; gap:10px;">
+                <button class="btn btn-secondary" th:onclick="'previsualizarReporte(\'' + ${previewType} + '\')'">👁️ Vista Previa</button>
+                <a th:href="${downloadUrl}" target="_blank" class="btn btn-primary">⬇️ Descargar PDF</a>
+            </div>
+        </div>
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Mesa</th>
+                    <th>Mesero</th>
+                    <th>Ítems</th>
+                    <th>Método Pago</th>
+                    <th>Fecha/Hora Pago</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="p : ${pedidos}">
+                    <td style="color:white;" th:text="${p.mesa.nombre}">Mesa</td>
+                    <td style="color:var(--text-secondary);" th:text="${p.mesero != null ? p.mesero.nombre : '-'}">Mesero</td>
+                    <td style="color:var(--text-secondary); max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                        <span th:each="d, iter : ${p.detalles}" th:text="${d.cantidad} + 'x ' + ${d.plato.nombre} + (iter.last ? '' : ', ')"></span>
+                    </td>
+                    <td><span class="role-pill" th:classappend="${p.metodoPago}" th:text="${#strings.toUpperCase(p.metodoPago)}">EFECTIVO</span></td>
+                    <td style="color:var(--text-secondary);" th:text="${#temporals.format(p.fechaPago, 'dd/MM/yyyy HH:mm')}">Fecha</td>
+                    <td style="color:var(--accent); font-weight:700;" th:text="${#numbers.formatCurrency(p.total)}">S/ 0.00</td>
+                </tr>
+            </tbody>
+        </table>
+        <div style="margin-top:15px; text-align:right;">
+            <span style="color:var(--text-secondary);">Total registros: <strong style="color:white;" th:text="${#lists.size(pedidos)}">0</strong></span>
+            &nbsp;&nbsp;
+            <span style="color:var(--text-secondary);">Total vendido: <strong style="color:var(--accent); font-size:1.1rem;" th:text="${#numbers.formatCurrency(#aggregates.sum(pedidos.![total]) ?: 0)}">S/ 0.00</strong></span>
+        </div>
+    </div>
+</div>

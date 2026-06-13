@@ -1,0 +1,41 @@
+<div th:fragment="modal" class="modal-overlay" style="backdrop-filter: blur(8px); opacity: 1; pointer-events: auto; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(10, 14, 23, 0.8); z-index: 2000; display: flex; align-items: center; justify-content: center;" id="mesa-detalle-modal">
+    <div class="modal-container" style="background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-lg); width: 90%; max-width: 450px; box-shadow: var(--shadow-lg); display: flex; flex-direction: column;">
+        <div class="modal-header" style="padding: 20px 24px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
+            <h3 class="modal-title" style="font-size: 1.25rem; color: white;" th:text="'Detalles Mesa ' + ${pedido.mesa.nombre}">Detalles</h3>
+            <button class="modal-close" onclick="this.closest('.modal-overlay').remove()" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.5rem; width: 32px; height: 32px; border-radius: 50%;">&times;</button>
+        </div>
+        <div class="modal-body" style="padding: 24px;">
+            <div style="margin-bottom:15px;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                    <span style="color:var(--text-secondary);">Pedido:</span>
+                    <span style="color:white;" th:text="'#' + ${pedido.id}">#ID</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                    <span style="color:var(--text-secondary);">Estado:</span>
+                    <span class="badge" style="background:var(--bg-tertiary);" th:text="${pedido.estado}">Estado</span>
+                </div>
+            </div>
+            <div style="max-height:200px; overflow-y:auto; margin-bottom:15px; background:rgba(0,0,0,0.2); padding:10px; border-radius:8px;">
+                <div th:each="d : ${pedido.detalles}" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #222;">
+                    <div>
+                        <div style="color:white; font-size:0.9rem;" th:text="${d.cantidad} + 'x ' + ${d.plato.nombre}">1x Plato</div>
+                        <div th:if="${d.nota != null and !d.nota.empty}" style="font-size:0.75rem; color:orange;" th:text="'📝 ' + ${d.nota}">Nota</div>
+                    </div>
+                    <div style="color:var(--text-secondary);" th:text="'S/ ' + ${#numbers.formatDecimal(d.precioUnitario * d.cantidad, 1, 2)}">S/ 0.00</div>
+                </div>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:1.2rem; font-weight:bold; color:var(--accent);">
+                <span>TOTAL:</span>
+                <span th:text="'S/ ' + ${#numbers.formatDecimal(pedido.total, 1, 2)}">S/ 0.00</span>
+            </div>
+        </div>
+        <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid var(--border-color); background-color: rgba(10, 14, 23, 0.4); display: flex; align-items: center; justify-content: flex-end; gap: 12px;">
+            <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cerrar</button>
+            <button th:if="${pedido.estado == 'cocina_pendiente' or pedido.estado == 'cocina_preparacion'}" 
+                    class="btn btn-primary"
+                    th:hx-get="'/mesero/pedido/editar/' + ${pedido.id}"
+                    hx-target="#mesero-app"
+                    hx-on::after-request="this.closest('.modal-overlay').remove()">✏️ Modificar Pedido</button>
+        </div>
+    </div>
+</div>

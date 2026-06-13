@@ -1,0 +1,38 @@
+<div id="plato-modal" th:fragment="form" class="modal-overlay" style="backdrop-filter: blur(8px); opacity: 1; pointer-events: auto; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(10, 14, 23, 0.8); z-index: 2000; display: flex; align-items: center; justify-content: center;">
+    <div class="modal-container" style="background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-lg); width: 90%; max-width: 450px; box-shadow: var(--shadow-lg); display: flex; flex-direction: column;">
+        <div class="modal-header" style="padding: 20px 24px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
+            <h3 class="modal-title" style="font-size: 1.25rem; color: white;" th:text="${plato.id == null ? '🍽️ Nuevo Plato' : '✏️ Editar Plato'}">Título</h3>
+            <button class="modal-close" onclick="this.closest('.modal-overlay').remove()" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.5rem; width: 32px; height: 32px; border-radius: 50%;">&times;</button>
+        </div>
+        <form hx-post="/admin/platos/guardar" hx-target="#admin-content" hx-on::after-request="if(event.detail.successful) this.closest('.modal-overlay').remove()">
+            <input type="hidden" name="id" th:value="${plato.id}">
+            <div class="modal-body" style="padding: 24px; color: var(--text-secondary); max-height: 70vh; overflow-y: auto;">
+                <div class="form-group" style="margin-bottom:15px;">
+                    <label style="display:block; margin-bottom:5px;">Nombre del Plato</label>
+                    <input type="text" name="nombre" class="form-control" th:value="${plato.nombre}" required style="width:100%;">
+                </div>
+                <div class="form-group" style="margin-bottom:15px;">
+                    <label style="display:block; margin-bottom:5px;">Categoría</label>
+                    <select name="categoria" class="form-control" style="width:100%;">
+                        <option value="entradas" th:selected="${plato.categoria == 'entradas'}">Entradas</option>
+                        <option value="segundos" th:selected="${plato.categoria == 'segundos'}">Segundos</option>
+                        <option value="bebidas" th:selected="${plato.categoria == 'bebidas'}">Bebidas</option>
+                        <option value="postres" th:selected="${plato.categoria == 'postres'}">Postres</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom:15px;">
+                    <label style="display:block; margin-bottom:5px;">Precio (S/.)</label>
+                    <input type="number" name="precio" class="form-control" th:value="${plato.precio}" step="0.10" min="0.01" required style="width:100%;">
+                </div>
+                <div class="form-group" style="margin-bottom:15px;">
+                    <label style="display:block; margin-bottom:5px;">Descripción</label>
+                    <textarea name="descripcion" class="form-control" rows="3" th:text="${plato.descripcion}" style="width:100%;"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid var(--border-color); background-color: rgba(10, 14, 23, 0.4); display: flex; align-items: center; justify-content: flex-end; gap: 12px;">
+                <button type="button" class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>

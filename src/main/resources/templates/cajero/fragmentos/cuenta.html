@@ -1,0 +1,64 @@
+<div th:fragment="detalle" class="glass-card cashier-bill-panel" id="bill-panel">
+    <h3 style="font-size: 1.2rem; margin-bottom: 15px;" th:text="'Cuenta - Pedido #' + ${pedido.id}">Cuenta</h3>
+    
+    <div style="flex:1; overflow-y:auto; margin-bottom:15px; border-bottom:1px solid #333; padding-bottom:10px;">
+        <div th:each="d : ${pedido.detalles}" style="display:flex; justify-content:space-between; margin-bottom:5px;">
+            <span th:text="${d.cantidad} + 'x ' + ${d.plato.nombre}">1x Plato</span>
+            <span th:text="'S/ ' + ${#numbers.formatDecimal(d.precioUnitario * d.cantidad, 1, 2)}">S/ 0.00</span>
+        </div>
+        <hr style="border-color:#333; margin:10px 0;">
+        <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:var(--text-secondary);">
+            <span>I.G.V (18%):</span>
+            <span th:text="'S/ ' + ${#numbers.formatDecimal(pedido.total - (pedido.total / 1.18), 1, 2)}">S/ 0.00</span>
+        </div>
+    </div>
+    
+    <h2 style="color:var(--accent); font-size:1.8rem; text-align:right; margin-bottom:15px;" th:text="'S/ ' + ${#numbers.formatDecimal(pedido.total, 1, 2)}">S/ 0.00</h2>
+    
+    <form hx-post="/cajero/pedidos/cobrar" hx-target="#cashier-right-panel">
+        <input type="hidden" name="pedidoId" th:value="${pedido.id}">
+        <div class="payment-method-selector" style="margin-bottom:15px;">
+            <input type="radio" name="metodoPago" value="efectivo" id="m-efectivo" checked style="display:none;" onchange="toggleCashCalc(true)">
+            <label for="m-efectivo" class="payment-method-btn active" onclick="updateMethodUI(this)">Efectivo</label>
+            
+            <input type="radio" name="metodoPago" value="tarjeta" id="m-tarjeta" style="display:none;" onchange="toggleCashCalc(false)">
+            <label for="m-tarjeta" class="payment-method-btn" onclick="updateMethodUI(this)">Tarjeta</label>
+            
+            <input type="radio" name="metodoPago" value="yape" id="m-yape" style="display:none;" onchange="toggleCashCalc(false)">
+            <label for="m-yape" class="payment-method-btn" onclick="updateMethodUI(this)">Yape/Plin</label>
+        </div>
+        
+        <div id="cash-calculator" style="margin-bottom:15px; padding:10px; background:var(--bg-tertiary); border-radius:8px;">
+            <label style="font-size:0.85rem; color:var(--text-secondary);">Efectivo Recibido (S/):</label>
+            <input type="number" id="cash-received" class="form-control" style="width:100%; margin-top:5px;" placeholder="0.00" 
+                   th:oninput="'calculateChange(' + ${pedido.total} + ')'">
+            <div style="margin-top:10px; display:flex; justify-content:space-between; font-weight:bold;">
+                <span>Vuelto:</span>
+                <span id="cash-change" style="color:#10b981;">S/ 0.00</span>
+            </div>
+        </div>
+        
+        <button type="submit" class="btn btn-success" style="width:100%; padding:15px; font-size:1.1rem; margin-bottom:10px;">💰 Cobrar Total</button>
+    </form>
+    
+    <button class="btn btn-secondary" style="width:100%; padding:10px;" 
+            th:hx-get="'/cajero/pedidos/' + ${pedido.id} + '/dividir/prompt'"
+            hx-target="body" hx-swap="beforeend">⚖️ Dividir Cuenta</button>
+
+    <script>
+        function toggleCashCalc(show) {
+            document.getElementById('cash-calculator').style.display = show ? 'block' : 'none';
+        }
+        function updateMethodUI(label) {
+            document.querySelectorAll('.payment-method-btn').forEach(b => b.classList.remove('active'));
+            label.classList.add('active');
+        }
+        function calculateChange(total) {
+            const received = parseFloat(document.getElementById('cash-received').value) || 0;
+            const change = received - total;
+            const el = document.getElementById('cash-change');
+            el.innerText = 'S/ ' + (change > 0 ? change.toFixed(2) : '0.00');
+            el.style.color = change >= 0 ? '#10b981' : '#ef4444';
+        }
+    </script>
+</div>

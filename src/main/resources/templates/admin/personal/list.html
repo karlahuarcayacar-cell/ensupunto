@@ -1,0 +1,39 @@
+<div th:fragment="content" class="admin-section">
+    <div class="glass-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <div>
+                <h3 style="color:white; font-size:1.1rem;">Personal Registrado</h3>
+                <p style="color:var(--text-secondary); font-size:0.85rem;">Gestiona los accesos y roles del personal del restaurante.</p>
+            </div>
+            <button class="btn btn-primary" hx-get="/admin/personal/nuevo" hx-target="body" hx-swap="beforeend">+ Nuevo Colaborador</button>
+        </div>
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Nombre del Empleado</th>
+                    <th>Rol de Sistema</th>
+                    <th>Nombre Usuario</th>
+                    <th>Contraseña</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="u : ${usuarios}">
+                    <td style="color:white; font-weight:600;" th:text="${u.nombre}">Nombre</td>
+                    <td><span class="role-pill" th:classappend="${u.rol}" th:text="${#strings.toUpperCase(u.rol)}">ROL</span></td>
+                    <td style="color:var(--text-secondary)" th:text="${u.nombreUsuario}">Username</td>
+                    <td style="color:var(--text-muted); font-family:monospace;">···</td>
+                    <td style="display:flex; gap:8px;">
+                        <button class="btn btn-secondary btn-sm" 
+                                th:hx-get="'/admin/personal/editar/' + ${u.id}" 
+                                hx-target="body" hx-swap="beforeend">Editar</button>
+                        <button class="btn btn-danger btn-sm" 
+                                th:hx-delete="'/admin/personal/' + ${u.id}"
+                                hx-confirm="¿Deseas desactivar este colaborador del sistema?"
+                                hx-target="#admin-content">Quitar</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>

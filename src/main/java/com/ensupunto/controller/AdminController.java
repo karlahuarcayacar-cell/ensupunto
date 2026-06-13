@@ -37,49 +37,136 @@ public class AdminController {
         if (u == null || !u.getRol().equals("admin")) return "redirect:/login";
 
         model.addAttribute("usuario", u);
-        return "admin";
+        return reportesTab(model, u, false);
     }
 
-    @GetMapping("/api/kpis")
-    @ResponseBody
-    public Map<String, Object> getKpis() {
-        return reporteService.obtenerKpisDelDia();
+    // --- REPORTES TAB ---
+
+    @GetMapping("/reportes")
+    public String reportesTab(Model model, @SessionAttribute("usuarioLogueado") Usuario u, @RequestHeader(value = "HX-Request", required = false) boolean hxRequest) {
+        model.addAttribute("usuario", u);
+        model.addAttribute("activeTab", "reportes");
+        model.addAttribute("contentTemplate", "reportes");
+        model.addAttribute("kpis", reporteService.obtenerKpisDelDia());
+        model.addAttribute("ventasCategoria", reporteService.obtenerVentasPorCategoria());
+        model.addAttribute("topPlatos", reporteService.obtenerTopPlatos());
+        model.addAttribute("historialHoy", pedidoService.mapearPedidos(reporteService.obtenerHistorialHoy()));
+        
+        return hxRequest ? "admin/reportes :: content" : "admin/layout";
     }
 
-    @GetMapping("/api/ventas-categoria")
-    @ResponseBody
-    public Map<String, Object> getVentasCategoria() {
-        return reporteService.obtenerVentasPorCategoria();
+    @GetMapping("/reportes/dashboard")
+    public String dashboardFragment(Model model) {
+        model.addAttribute("ventasCategoria", reporteService.obtenerVentasPorCategoria());
+        model.addAttribute("topPlatos", reporteService.obtenerTopPlatos());
+        model.addAttribute("historialHoy", pedidoService.mapearPedidos(reporteService.obtenerHistorialHoy()));
+        return "admin/reportes/dashboard :: content";
     }
 
-    @GetMapping("/api/top-platos")
-    @ResponseBody
-    public Map<String, Object> getTopPlatos() {
-        return reporteService.obtenerTopPlatos();
+    @GetMapping("/reportes/dia")
+    public String reporteDiaFragment(Model model) {
+        model.addAttribute("pedidos", pedidoService.mapearPedidos(reporteService.obtenerHistorialHoy()));
+        return "admin/reportes/dia";
     }
 
-    @GetMapping("/api/historial-hoy")
-    @ResponseBody
-    @Transactional(readOnly = true)
-    public List<Map<String, Object>> getHistorialHoy() {
-        return pedidoService.mapearPedidos(reporteService.obtenerHistorialHoy());
+    @GetMapping("/reportes/historico")
+    public String reporteHistoricoFragment(Model model) {
+        model.addAttribute("pedidos", pedidoService.mapearPedidos(reporteService.obtenerHistorialCompleto()));
+        return "admin/reportes/historico";
     }
 
-    @GetMapping("/api/historial-completo")
-    @ResponseBody
-    @Transactional(readOnly = true)
-    public List<Map<String, Object>> getHistorialCompleto() {
-        return pedidoService.mapearPedidos(reporteService.obtenerHistorialCompleto());
+    @GetMapping("/reportes/personalizado")
+    public String reportePersonalizadoFragment() {
+        return "admin/reportes/personalizado :: content";
     }
 
-    @GetMapping("/api/historial-periodo")
-    @ResponseBody
-    @Transactional(readOnly = true)
-    public List<Map<String, Object>> getHistorialPeriodo(@RequestParam String desde, @RequestParam String hasta) {
+    @GetMapping("/reportes/personalizado/buscar")
+    public String buscarPorPeriodo(@RequestParam String desde, @RequestParam String hasta, Model model) {
         LocalDate fechaDesde = LocalDate.parse(desde);
         LocalDate fechaHasta = LocalDate.parse(hasta);
-        return pedidoService.mapearPedidos(reporteService.obtenerHistorialPeriodo(fechaDesde, fechaHasta));
+        model.addAttribute("pedidos", pedidoService.mapearPedidos(reporteService.obtenerHistorialPeriodo(fechaDesde, fechaHasta)));
+        return "admin/reportes/tabla_pedidos :: render(${pedidos}, 'Reporte por Período', 'Desde ' + " + desde + " + ' hasta ' + " + hasta + ", '/admin/reporte/periodo?desde=' + " + desde + " + '&hasta=' + " + hasta + ", 'personalizado')";
     }
+
+    // --- PLATOS TAB ---
+
+    @GetMapping("/platos")
+    public String platosTab(Model model, @SessionAttribute("usuarioLogueado") Usuario u, @RequestHeader(value = "HX-Request", required = false) boolean hxRequest) {
+        model.addAttribute("usuario", u);
+        model.addAttribute("activeTab", "platos");
+        model.addAttribute("contentTemplate", "platos/list");
+        model.addAttribute("platos", platoService.listarTodos());
+        return hxRequest ? "admin/platos/list :: content" : "admin/layout";
+    }
+
+    @GetMapping("/platos/nuevo")
+    public String nuevoPlatoForm(Model model) {
+        model.addAttribute("plato", new Plato());
+        return "admin/platos/form_modal :: form";
+    }
+
+    @GetMapping("/platos/editar/{id}")
+    public String editarPlatoForm(@PathVariable Integer id, Model model) {
+        model.addAttribute("plato", platoService.buscarPorId(id));
+        return "admin/platos/form_modal :: form";
+    }
+
+    @PostMapping("/platos/guardar")
+    public String guardarPlato(@ModelAttribute Plato plato, Model model, @SessionAttribute("usuarioLogueado") Usuario u, @RequestHeader(value = "HX-Request", required = false) boolean hxRequest) {
+        platoService.guardar(plato);
+        return platosTab(model, u, hxRequest);
+    }
+
+    @DeleteMapping("/platos/{id}")
+    public String eliminarPlato(@PathVariable Integer id, Model model, @SessionAttribute("usuarioLogueado") Usuario u, @RequestHeader(value = "HX-Request", required = false) boolean hxRequest) {
+        platoService.eliminar(id);
+        return platosTab(model, u, hxRequest);
+    }
+
+    // --- PERSONAL TAB ---
+
+    @GetMapping("/personal")
+    public String personalTab(Model model, @SessionAttribute("usuarioLogueado") Usuario u, @RequestHeader(value = "HX-Request", required = false) boolean hxRequest) {
+        model.addAttribute("usuario", u);
+        model.addAttribute("activeTab", "personal");
+        model.addAttribute("contentTemplate", "personal/list");
+        model.addAttribute("usuarios", usuarioService.listarTodos());
+        return hxRequest ? "admin/personal/list :: content" : "admin/layout";
+    }
+
+    @GetMapping("/personal/nuevo")
+    public String nuevoUsuarioForm(Model model) {
+        model.addAttribute("usuario", new Usuario());
+        return "admin/personal/form_modal :: form";
+    }
+
+    @GetMapping("/personal/editar/{id}")
+    public String editarUsuarioForm(@PathVariable Integer id, Model model) {
+        model.addAttribute("usuario", usuarioService.buscarPorId(id));
+        return "admin/personal/form_modal :: form";
+    }
+
+    @PostMapping("/personal/guardar")
+    public String guardarUsuario(@ModelAttribute Usuario usuario, Model model, @SessionAttribute("usuarioLogueado") Usuario u, @RequestHeader(value = "HX-Request", required = false) boolean hxRequest) {
+        Usuario existente = usuario.getId() != null ? usuarioService.buscarPorId(usuario.getId()) : null;
+        if (existente != null) {
+            existente.setNombre(usuario.getNombre());
+            existente.setRol(usuario.getRol());
+            usuarioService.guardar(existente);
+        } else {
+            usuario.setActivo(true);
+            usuarioService.guardar(usuario);
+        }
+        return personalTab(model, u, hxRequest);
+    }
+
+    @DeleteMapping("/personal/{id}")
+    public String eliminarUsuario(@PathVariable Integer id, Model model, @SessionAttribute("usuarioLogueado") Usuario u, @RequestHeader(value = "HX-Request", required = false) boolean hxRequest) {
+        usuarioService.eliminar(id);
+        return personalTab(model, u, hxRequest);
+    }
+
+    // --- REPORTE PDF DOWNLOADS ---
 
     @GetMapping("/reporte/ventas")
     public ResponseEntity<?> descargarReporteDia() {
@@ -87,7 +174,7 @@ public class AdminController {
             byte[] pdf = reporteService.generarReporteVentas();
             return responderPdf(pdf, "reporte_diario_" + LocalDate.now() + ".pdf");
         } catch (Exception e) {
-            return ResponseEntity.status(500).body("Error: " + e.getClass().getSimpleName() + " - " + e.getMessage());
+            return ResponseEntity.status(500).body("Error: " + e.getMessage());
         }
     }
 
@@ -97,7 +184,7 @@ public class AdminController {
             byte[] pdf = reporteService.generarReporteVentasCompleto();
             return responderPdf(pdf, "reporte_historico_" + LocalDate.now() + ".pdf");
         } catch (Exception e) {
-            return ResponseEntity.status(500).body("Error: " + e.getClass().getSimpleName() + " - " + e.getMessage());
+            return ResponseEntity.status(500).body("Error: " + e.getMessage());
         }
     }
 
@@ -109,81 +196,8 @@ public class AdminController {
             byte[] pdf = reporteService.generarReporteVentasPeriodo(fechaDesde, fechaHasta);
             return responderPdf(pdf, "reporte_periodo_" + desde + "_" + hasta + ".pdf");
         } catch (Exception e) {
-            return ResponseEntity.status(500).body("Error: " + e.getClass().getSimpleName() + " - " + e.getMessage());
-        }
-    }
-
-    @GetMapping("/api/platos")
-    @ResponseBody
-    public List<Plato> listarPlatos() {
-        return platoService.listarTodos();
-    }
-
-    @PostMapping("/api/platos")
-    @ResponseBody
-    public Plato crearPlato(@RequestBody Plato plato) {
-        return platoService.guardar(plato);
-    }
-
-    @PutMapping("/api/platos/{id}")
-    @ResponseBody
-    public Plato actualizarPlato(@PathVariable Integer id, @RequestBody Plato plato) {
-        Plato existente = platoService.buscarPorId(id);
-        if (existente != null) {
-            existente.setNombre(plato.getNombre());
-            existente.setCategoria(plato.getCategoria());
-            existente.setPrecio(plato.getPrecio());
-            existente.setDescripcion(plato.getDescripcion());
-            return platoService.guardar(existente);
-        }
-        return null;
-    }
-
-    @DeleteMapping("/api/platos/{id}")
-    @ResponseBody
-    public void eliminarPlato(@PathVariable Integer id) {
-        platoService.eliminar(id);
-    }
-
-    @GetMapping("/api/usuarios")
-    @ResponseBody
-    public List<Usuario> listarUsuarios() {
-        return usuarioService.listarTodos();
-    }
-
-    @PostMapping("/api/usuarios")
-    @ResponseBody
-    public ResponseEntity<?> crearUsuario(@RequestBody Map<String, Object> payload) {
-        try {
-            Usuario usuario = new Usuario();
-            usuario.setNombre(payload.get("nombre").toString());
-            usuario.setNombreUsuario(payload.get("nombreUsuario").toString());
-            usuario.setContrasena(payload.get("contrasena").toString());
-            usuario.setRol(payload.get("rol").toString());
-            usuario.setActivo(true);
-            Usuario saved = usuarioService.guardar(usuario);
-            return ResponseEntity.ok(saved);
-        } catch (Exception e) {
             return ResponseEntity.status(500).body("Error: " + e.getMessage());
         }
-    }
-
-    @PutMapping("/api/usuarios/{id}")
-    @ResponseBody
-    public Usuario actualizarUsuario(@PathVariable Integer id, @RequestBody Usuario usuario) {
-        Usuario existente = usuarioService.buscarPorId(id);
-        if (existente != null) {
-            existente.setNombre(usuario.getNombre());
-            existente.setRol(usuario.getRol());
-            return usuarioService.guardar(existente);
-        }
-        return null;
-    }
-
-    @DeleteMapping("/api/usuarios/{id}")
-    @ResponseBody
-    public void eliminarUsuario(@PathVariable Integer id) {
-        usuarioService.eliminar(id);
     }
 
     private ResponseEntity<byte[]> responderPdf(byte[] pdf, String filename) {
@@ -192,4 +206,9 @@ public class AdminController {
         headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename);
         return ResponseEntity.ok().headers(headers).body(pdf);
     }
+
+    // Mantener APIs antiguas por si acaso para compatibilidad parcial (opcional)
+    @GetMapping("/api/kpis") @ResponseBody public Map<String, Object> getKpis() { return reporteService.obtenerKpisDelDia(); }
+    @GetMapping("/api/ventas-categoria") @ResponseBody public Map<String, Object> getVentasCategoria() { return reporteService.obtenerVentasPorCategoria(); }
+    @GetMapping("/api/top-platos") @ResponseBody public Map<String, Object> getTopPlatos() { return reporteService.obtenerTopPlatos(); }
 }

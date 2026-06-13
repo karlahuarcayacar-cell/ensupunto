@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/header :: head('Chef Dashboard')}"></head>
+<body>
+    <div class="app-container">
+        <header th:replace="~{fragments/header :: navbar}"></header>
+        
+        <main class="main-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">  
+                <div>
+                    <h1 style="font-size: 1.8rem; color: white;">Monitor de Cocina (KDS)</h1>
+                    <p style="color: var(--text-secondary); font-size: 0.9rem;">Gestión de tickets y tiempos de preparación.</p>
+                </div>
+            </div>
+            
+            <div class="kitchen-grid" id="kitchen-grid" 
+                 hx-get="/chef/fragment/pedidos" 
+                 hx-trigger="every 5s, load" 
+                 hx-swap="innerHTML">
+                <!-- Los tickets se cargarán aquí automáticamente con HTMX -->
+                <p style="color:gray;">Cargando pedidos...</p>
+            </div>
+        </main>
+    </div>
+
+    <th:block th:replace="~{fragments/scripts :: commonScripts}"></th:block>
+
+    <!-- Fragmento para los tickets (se usará para HTMX) -->
+    <div th:fragment="lista-pedidos" th:remove="tag">
+        <p th:if="${#lists.isEmpty(pedidos)}" style="color:gray;">No hay pedidos pendientes.</p>
+        
+        <div th:each="p : ${pedidos}" 
+             class="kitchen-ticket" 
+             th:classappend="${p.estado == 'cocina_preparacion' ? 'ticket-preparacion' : ''}">
+            
+            <div class="kitchen-ticket-header">
+                <div class="ticket-meta">
+                    <span class="ticket-table-name" th:text="${p.mesa.nombre}">Mesa</span>
+                    <span class="badge" 
+                          th:classappend="${p.estado == 'cocina_preparacion' ? 'badge-cooking' : 'badge-waiting'}"
+                          th:text="${p.estado == 'cocina_preparacion' ? 'Preparando' : 'En Cola'}"
+                          style="margin-left: 10px;">Estado</span>
+                    <span class="ticket-id" style="margin-left: auto;" th:text="'#' + ${p.id}">#ID</span>
+                </div>
+                <div class="timer-display" 
+                     th:data-time="${p.fechaCreacion}" 
+                     style="font-family: monospace; font-size: 1.1rem; color: var(--text-secondary); margin-top: 5px;">⏱ 00:00</div>
+            </div>
+            
+            <div class="kitchen-ticket-body">
+                <div th:each="d : ${p.detalles}" class="ticket-item">
+                    <div class="ticket-item-row">
+                        <div class="ticket-item-qty" th:text="${d.cantidad}">1</div>
+                        <div class="ticket-item-name" th:text="${d.plato.nombre}">Plato</div>
+                    </div>
+                    <div th:if="${d.nota != null and !d.nota.empty}" class="ticket-item-note" style="color: #f59e0b;" th:text="'⚠️ ' + ${d.nota}">Nota</div>
+                </div>
+            </div>
+            
+            <div class="kitchen-ticket-footer">
+                <button th:if="${p.estado == 'cocina_pendiente'}" 
+                        class="btn btn-primary" style="width: 100%;"
+                        th:hx-put="'/chef/api/pedidos/' + ${p.id} + '/preparar'"
+                        hx-target="#kitchen-grid">👨‍🍳 Preparar Ahora</button>
+                        
+                <button th:if="${p.estado == 'cocina_preparacion'}" 
+                        class="btn btn-success" style="width: 100%;"
+                        th:hx-put="'/chef/api/pedidos/' + ${p.id} + '/terminar'"
+                        hx-target="#kitchen-grid">✅ Terminado</button>
+            </div>
+        </div>
+        
+        <script>
+            if (typeof updateTimers === 'function') {
+                updateTimers();
+            }
+        </script>
+    </div>
+
+    <script th:inline="javascript">
+        function updateTimers() {
+            document.querySelectorAll('.timer-display').forEach(el => {
+                const createdStr = el.getAttribute('data-time');
+                const created = new Date(createdStr).getTime();
+                const now = new Date().getTime();
+                const diff = now - created;
+                
+                let m = Math.floor(diff / 60000);
+                let s = Math.floor((diff % 60000) / 1000);
+                
+                el.innerText = `⏱ ${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+                
+                if (m >= 15) {
+                    el.style.color = '#ef4444';
+                    el.style.fontWeight = 'bold';
+                }
+            });
+        }
+
+        // Ejecutar timers cada segundo
+        if (!window.timerInterval) {
+            window.timerInterval = setInterval(updateTimers, 1000);
+        }
+    </script>
+</body>
+</html>

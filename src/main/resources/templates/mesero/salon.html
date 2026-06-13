@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/header :: head('Mesero Dashboard')}"></head>
+<body>
+    <style>
+        .btn-details { background-color: var(--bg-tertiary); border: 1px solid var(--border-color); color: white; }
+        .btn-details:hover { background-color: var(--border-color); }
+        .table-data-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+        .table-total { font-size: 1.1rem; font-weight: 700; color: var(--accent); }
+        .table-items-count { font-size: 0.85rem; color: var(--text-secondary); background: rgba(255,255,255,0.05); padding: 2px 8px; border-radius: 4px; }
+    </style>
+
+    <div class="app-container">
+        <header th:replace="~{fragments/header :: navbar}"></header>
+        
+        <main class="main-content" id="mesero-app">
+            <div th:fragment="salon-view" id="view-mesas" class="fade-in">
+                <div style="display: flex; flex-direction: column; margin-bottom: 25px;">  
+                    <h1 style="font-size: 1.8rem; color: white;">Salón de Mesas</h1>
+                    <p style="color: var(--text-secondary); font-size: 0.9rem;">Gestión de consumo y pedidos en tiempo real.</p>
+                </div>
+                
+                <div class="tables-grid" id="tables-grid" 
+                     hx-get="/mesero/fragment/mesas" 
+                     hx-trigger="every 10s, load" 
+                     hx-swap="innerHTML">
+                    <div th:replace="~{mesero/salon :: lista-mesas}"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <th:block th:replace="~{fragments/scripts :: commonScripts}"></th:block>
+
+    <!-- Fragmento de Mesas -->
+    <div th:fragment="lista-mesas" th:remove="tag">
+        <div th:each="m : ${mesasStatus}" 
+             class="glass-card table-card" 
+             th:classappend="'state-' + ${m.estado}"
+             th:hx-get="${m.estado == 'libre' ? '/mesero/pedido/nuevo/' + m.id : '/mesero/pedido/detalle/' + m.pedidoId}"
+             th:attr="hx-target=${m.estado == 'libre' ? '#mesero-app' : 'body'}, hx-swap=${m.estado == 'libre' ? 'innerHTML' : 'beforeend'}"
+             style="cursor:pointer;">
+            
+            <div class="table-header">
+                <span class="table-number" th:text="${m.nombre}">Mesa</span>
+                <span class="badge" th:classappend="${'badge-' + m.estadoSuffix}" th:text="${m.estadoLabel}">Estado</span>
+            </div>
+            
+            <div class="table-body-info">
+                <div th:if="${m.estado == 'libre'}" th:remove="tag">
+                    <p style="font-size:0.8rem; color:var(--text-muted); min-height:60px; display:flex; align-items:center;">Mesa disponible para nuevos clientes.</p>
+                </div>
+                <div th:if="${m.estado != 'libre'}" th:remove="tag">
+                    <div class="table-data-row">
+                        <span class="table-total" th:text="'S/ ' + ${#numbers.formatDecimal(m.total, 1, 2)}">S/ 0.00</span>
+                        <span class="table-items-count" th:text="${m.cantidadPlatos} + ' platos'">0 platos</span>
+                    </div>
+                    <div style="margin-top:10px;">
+                        <div style="font-size:0.7rem; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px;">Mesero</div>
+                        <div style="font-size:0.9rem; color:white; font-weight:500;" th:text="${m.meseroNombre}">Mesero</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="table-footer-actions">
+                <button th:if="${m.estado == 'libre'}" class="btn btn-primary btn-sm" style="width:100%">Nueva Orden</button>
+                <button th:if="${m.estado != 'libre'}" class="btn btn-details btn-sm" style="width:100%">Ver Detalles</button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
