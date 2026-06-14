@@ -18,9 +18,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Controller
 @RequestMapping("/admin")
@@ -67,13 +69,21 @@ public class AdminController {
 
     @GetMapping("/reportes/dia")
     public String reporteDiaFragment(Model model) {
-        model.addAttribute("pedidos", pedidoService.mapearPedidos(reporteService.obtenerHistorialHoy()));
+        List<Map<String, Object>> pedidos = pedidoService.mapearPedidos(reporteService.obtenerHistorialHoy());
+        BigDecimal totalVendido = pedidos.stream()
+                .map(p -> (BigDecimal) p.get("total"))
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        model.addAttribute("pedidos", pedidos);
+        model.addAttribute("totalVendido", totalVendido);
         return "admin/reportes/dia";
     }
 
     @GetMapping("/reportes/historico")
     public String reporteHistoricoFragment(Model model) {
-        model.addAttribute("pedidos", pedidoService.mapearPedidos(reporteService.obtenerHistorialCompleto()));
+        List<Map<String, Object>> pedidos = pedidoService.mapearPedidos(reporteService.obtenerHistorialCompleto());
+        model.addAttribute("pedidos", pedidos);
+        model.addAttribute("totalVendido", sumarTotalPedidos(pedidos));
         return "admin/reportes/historico";
     }
 
@@ -86,7 +96,9 @@ public class AdminController {
     public String buscarPorPeriodo(@RequestParam String desde, @RequestParam String hasta, Model model) {
         LocalDate fechaDesde = LocalDate.parse(desde);
         LocalDate fechaHasta = LocalDate.parse(hasta);
-        model.addAttribute("pedidos", pedidoService.mapearPedidos(reporteService.obtenerHistorialPeriodo(fechaDesde, fechaHasta)));
+        List<Map<String, Object>> pedidos = pedidoService.mapearPedidos(reporteService.obtenerHistorialPeriodo(fechaDesde, fechaHasta));
+        model.addAttribute("pedidos", pedidos);
+        model.addAttribute("totalVendido", sumarTotalPedidos(pedidos));
         model.addAttribute("titulo", "Reporte por Período");
         model.addAttribute("subtitulo", "Desde " + desde + " hasta " + hasta);
         model.addAttribute("downloadUrl", "/admin/reporte/periodo?desde=" + desde + "&hasta=" + hasta);
@@ -229,8 +241,47 @@ public class AdminController {
         return ResponseEntity.ok().headers(headers).body(pdf);
     }
 
+    @GetMapping("/reporte/preview/{tipo}")
+    public ResponseEntity<byte[]> previsualizarReporte(
+            @PathVariable String tipo,
+            @RequestParam(required = false) String desde,
+            @RequestParam(required = false) String hasta) {
+        try {
+            byte[] pdf;
+            switch (tipo) {
+                case "dia" -> pdf = reporteService.generarReporteVentas();
+                case "historico" -> pdf = reporteService.generarReporteVentasCompleto();
+                case "personalizado" -> {
+                    if (desde == null || hasta == null) {
+                        return ResponseEntity.badRequest().build();
+                    }
+                    pdf = reporteService.generarReporteVentasPeriodo(
+                            LocalDate.parse(desde), LocalDate.parse(hasta));
+                }
+                default -> {
+                    return ResponseEntity.badRequest().build();
+                }
+            }
+ 
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.set(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=preview.pdf");
+            return ResponseEntity.ok().headers(headers).body(pdf);
+ 
+        } catch (Exception e) {
+            return ResponseEntity.status(500).build();
+        }
+    }
+    
     // Mantener APIs antiguas por si acaso para compatibilidad parcial (opcional)
     @GetMapping("/api/kpis") @ResponseBody public Map<String, Object> getKpis() { return reporteService.obtenerKpisDelDia(); }
     @GetMapping("/api/ventas-categoria") @ResponseBody public Map<String, Object> getVentasCategoria() { return reporteService.obtenerVentasPorCategoria(); }
     @GetMapping("/api/top-platos") @ResponseBody public Map<String, Object> getTopPlatos() { return reporteService.obtenerTopPlatos(); }
+
+    private BigDecimal sumarTotalPedidos(List<Map<String, Object>> pedidos) {
+        return pedidos.stream()
+                .map(p -> (BigDecimal) p.get("total"))
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
 }
