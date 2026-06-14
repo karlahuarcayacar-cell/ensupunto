@@ -6,7 +6,7 @@
                 <p style="color:var(--text-secondary); font-size:0.85rem;" th:text="${subtitulo}">Subtítulo</p>
             </div>
             <div style="display:flex; gap:10px;">
-                <button class="btn btn-secondary" th:onclick="'previsualizarReporte(\'' + ${previewType} + '\')'">👁️ Vista Previa</button>
+                <button class="btn btn-secondary" th:attr="onclick=|previsualizarReporte('${previewType}')|">👁️ Vista Previa</button>
                 <button class="btn btn-secondary" onclick="imprimirPreview()">🖨️ Imprimir</button>
                 <a th:href="${downloadUrl}" target="_blank" class="btn btn-primary">⬇️ Descargar PDF</a>
             </div>
@@ -38,7 +38,7 @@
         <div style="margin-top:15px; text-align:right;">
             <span style="color:var(--text-secondary);">Total registros: <strong style="color:white;" th:text="${#lists.size(pedidos)}">0</strong></span>
             &nbsp;&nbsp;
-            <span style="color:var(--text-secondary);">Total vendido: <strong style="color:var(--accent); font-size:1.1rem;" th:text="${#numbers.formatCurrency(totalVendido != null ? totalVendido : 0)}">S/ 0.00</strong></span>
+            <span style="color:var(--text-secondary);">Total vendido: <strong style="color:var(--accent); font-size:1.1rem;" th:text="${#numbers.formatCurrency(#aggregates.sum(pedidos.![total]) ?: 0)}">S/ 0.00</strong></span>
         </div>
     </div>
 

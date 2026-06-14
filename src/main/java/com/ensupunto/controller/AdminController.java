@@ -103,7 +103,7 @@ public class AdminController {
         model.addAttribute("subtitulo", "Desde " + desde + " hasta " + hasta);
         model.addAttribute("downloadUrl", "/admin/reporte/periodo?desde=" + desde + "&hasta=" + hasta);
         model.addAttribute("previewType", "personalizado");
-        return "admin/reportes/tabla_pedidos :: render(pedidos=pedidos, titulo=titulo, subtitulo=subtitulo, downloadUrl=downloadUrl, previewType=previewType)";
+        return "admin/reportes/tabla_pedidos :: render(pedidos=${pedidos}, titulo=${titulo}, subtitulo=${subtitulo}, downloadUrl=${downloadUrl}, previewType=${previewType})";
     }
 
     @GetMapping("/reportes/auditoria")
