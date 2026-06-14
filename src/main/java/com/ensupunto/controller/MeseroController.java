@@ -118,27 +118,87 @@ public class MeseroController {
     }
 
     @GetMapping("/pedido/editar/{pedidoId}")
-    public String editarPedido(@PathVariable Integer pedidoId, @ModelAttribute("carrito") CarritoDTO carrito, Model model) {
+    public String editarPedido(@PathVariable Integer pedidoId,
+                                @ModelAttribute("carrito") CarritoDTO carrito,
+                                Model model,
+                                jakarta.servlet.http.HttpServletResponse response) {
+     
         Pedido p = pedidoService.buscarPorId(pedidoId);
+     
         if (p != null && ("dividido".equals(p.getEstado()) || "cuenta_pedida".equals(p.getEstado()))) {
             getSalonFragment(model);
             model.addAttribute("errorModal", "No se puede modificar un pedido con cuenta dividida o en proceso de cobro.");
+            response.setHeader("HX-Retarget", "#mesero-app");
+            response.setHeader("HX-Reswap", "innerHTML");
             return "mesero/salon :: salon-view";
         }
-
+     
+        // Caso: pedido en preparación -> requiere autorización admin
+        if (p != null && "cocina_preparacion".equals(p.getEstado())) {
+            model.addAttribute("pedidoId", pedidoId);
+            response.setHeader("HX-Retarget", "body");
+            response.setHeader("HX-Reswap", "beforeend");
+            return "mesero/pedido/autorizacion_modal :: modal";
+        }
+     
+        // Caso normal: modificar libremente
         carrito.setMesaId(p.getMesa().getId());
         carrito.setNombreMesa(p.getMesa().getNombre());
         carrito.setPedidoId(pedidoId);
         carrito.setModifying(true);
         carrito.getItems().clear();
-        
+     
         for (DetallePedido dp : p.getDetalles()) {
             carrito.getItems().add(new ItemCarritoDTO(dp.getPlato().getId(), dp.getPlato().getNombre(), dp.getPrecioUnitario(), dp.getCantidad(), dp.getNota()));
         }
-        
+     
+        response.setHeader("HX-Retarget", "#mesero-app");
+        response.setHeader("HX-Reswap", "innerHTML");
         return editorView(model, "entradas");
     }
 
+    @PostMapping("/pedido/editar/{pedidoId}/autorizar")
+    public String autorizarYEditar(@PathVariable Integer pedidoId,
+                                    @RequestParam String adminUsername,
+                                    @RequestParam String adminPassword,
+                                    @ModelAttribute("carrito") CarritoDTO carrito,
+                                    Model model,
+                                    jakarta.servlet.http.HttpServletResponse response) {
+     
+        if (!pedidoService.validarAdmin(adminUsername, adminPassword)) {
+            model.addAttribute("pedidoId", pedidoId);
+            model.addAttribute("error", "Usuario o contraseña de administrador incorrectos.");
+            // Falla: el modal de error se reemplaza a sí mismo (overlay), no toca #mesero-app
+            response.setHeader("HX-Retarget", "#autorizacion-modal");
+            response.setHeader("HX-Reswap", "outerHTML");
+            return "mesero/pedido/autorizacion_modal :: modal";
+        }
+     
+        Pedido p = pedidoService.buscarPorId(pedidoId);
+        if (p != null && ("dividido".equals(p.getEstado()) || "cuenta_pedida".equals(p.getEstado()))) {
+            getSalonFragment(model);
+            model.addAttribute("errorModal", "No se puede modificar un pedido con cuenta dividida o en proceso de cobro.");
+            response.setHeader("HX-Retarget", "#mesero-app");
+            response.setHeader("HX-Reswap", "innerHTML");
+            return "mesero/salon :: salon-view";
+        }
+     
+        carrito.setMesaId(p.getMesa().getId());
+        carrito.setNombreMesa(p.getMesa().getNombre());
+        carrito.setPedidoId(pedidoId);
+        carrito.setModifying(true);
+        carrito.getItems().clear();
+     
+        for (DetallePedido dp : p.getDetalles()) {
+            carrito.getItems().add(new ItemCarritoDTO(dp.getPlato().getId(), dp.getPlato().getNombre(), dp.getPrecioUnitario(), dp.getCantidad(), dp.getNota()));
+        }
+     
+        // Éxito: va a #mesero-app y el form's hx-on cierra el modal
+        response.setHeader("HX-Retarget", "#mesero-app");
+        response.setHeader("HX-Reswap", "innerHTML");
+        return editorView(model, "entradas");
+    }
+    
     @GetMapping("/pedido/catalogo/{categoria}")
     public String getCatalogo(@PathVariable String categoria, Model model) {
         model.addAttribute("platos", platoService.listarActivos().stream()

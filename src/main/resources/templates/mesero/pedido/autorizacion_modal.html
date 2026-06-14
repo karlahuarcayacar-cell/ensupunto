@@ -1,0 +1,36 @@
+<div th:fragment="modal" class="modal-overlay" style="backdrop-filter: blur(8px); opacity: 1; pointer-events: auto; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(10, 14, 23, 0.8); z-index: 2000; display: flex; align-items: center; justify-content: center;" id="autorizacion-modal">
+    <div class="modal-container" style="background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-lg); width: 90%; max-width: 420px; box-shadow: var(--shadow-lg); display: flex; flex-direction: column;">
+        <div class="modal-header" style="padding: 20px 24px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
+            <h3 class="modal-title" style="font-size: 1.25rem; color: white;">🔒 Autorización Requerida</h3>
+            <button class="modal-close" onclick="this.closest('.modal-overlay').remove()" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.5rem; width: 32px; height: 32px; border-radius: 50%;">&times;</button>
+        </div>
+        <form th:hx-post="'/mesero/pedido/editar/' + ${pedidoId} + '/autorizar'"
+              hx-target="#mesero-app"
+              hx-on::after-request="if(event.detail.xhr.getResponseHeader('HX-Retarget') === '#mesero-app') this.closest('.modal-overlay').remove()">
+            <div class="modal-body" style="padding: 24px;">
+                <p style="color:var(--text-secondary); font-size:0.85rem; margin-bottom:15px;">
+                    Este pedido ya está en preparación. Para modificarlo, ingresa las credenciales de un administrador.
+                </p>
+
+                <div th:if="${error}" style="background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.25); color:#f87171; padding:10px; border-radius:8px; margin-bottom:15px; font-size:0.85rem;" th:text="${error}">
+                    Error
+                </div>
+
+                <div class="form-group">
+                    <label style="color:var(--text-secondary);">Usuario administrador</label>
+                    <input type="text" name="adminUsername" class="form-control" required autofocus
+                           style="width:100%; padding:8px; margin-top:5px; background:var(--bg-tertiary); border:1px solid var(--border-color); color:white; border-radius:4px;">
+                </div>
+                <div class="form-group" style="margin-top:12px;">
+                    <label style="color:var(--text-secondary);">Contraseña</label>
+                    <input type="password" name="adminPassword" class="form-control" required
+                           style="width:100%; padding:8px; margin-top:5px; background:var(--bg-tertiary); border:1px solid var(--border-color); color:white; border-radius:4px;">
+                </div>
+            </div>
+            <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid var(--border-color); background-color: rgba(10, 14, 23, 0.4); display: flex; align-items: center; justify-content: flex-end; gap: 12px;">
+                <button type="button" class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Autorizar y Modificar</button>
+            </div>
+        </form>
+    </div>
+</div>

@@ -31,11 +31,14 @@
         </div>
         <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid var(--border-color); background-color: rgba(10, 14, 23, 0.4); display: flex; align-items: center; justify-content: flex-end; gap: 12px;">
             <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cerrar</button>
-            <button th:if="${pedido.estado == 'cocina_pendiente' or pedido.estado == 'cocina_preparacion'}" 
+
+            <!-- Un solo botón: el endpoint decide si requiere autorización según el estado -->
+            <button th:if="${pedido.estado == 'cocina_pendiente' or pedido.estado == 'cocina_preparacion'}"
                     class="btn btn-primary"
                     th:hx-get="'/mesero/pedido/editar/' + ${pedido.id}"
-                    hx-target="#mesero-app"
-                    hx-on::after-request="this.closest('.modal-overlay').remove()">✏️ Modificar Pedido</button>
+                    hx-target="body" hx-swap="beforeend"
+                    hx-on::after-request="this.closest('.modal-overlay').remove()"
+                    th:text="${pedido.estado == 'cocina_preparacion' ? '🔒 Modificar Pedido' : '✏️ Modificar Pedido'}">Modificar Pedido</button>
         </div>
     </div>
 </div>
