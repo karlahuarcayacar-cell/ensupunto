@@ -7,4 +7,7 @@ public interface MesaService {
     List<Mesa> listarTodas();
     Mesa buscarPorId(Integer id);
     Mesa actualizarEstado(Integer id, String nuevoEstado);
+    Mesa guardar(Mesa mesa);
+    void eliminar(Integer id);
 }
+

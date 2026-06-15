@@ -31,4 +31,17 @@ public class MesaServiceImpl implements MesaService {
             return mesaRepository.save(mesa);
         }).orElse(null);
     }
+
+    @Override
+    public Mesa guardar(Mesa mesa) {
+        if (mesa.getEstado() == null || mesa.getEstado().trim().isEmpty()) {
+            mesa.setEstado("libre");
+        }
+        return mesaRepository.save(mesa);
+    }
+
+    @Override
+    public void eliminar(Integer id) {
+        mesaRepository.deleteById(id);
+    }
 }

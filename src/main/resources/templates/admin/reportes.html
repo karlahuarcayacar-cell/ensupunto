@@ -21,44 +21,26 @@
         <div class="glass-card kpi-card">
             <div class="kpi-icon">💰</div>
             <div class="kpi-data">
-                <span class="kpi-label">Ingresos Totales</span>
+                <span class="kpi-label">Ingresos de Hoy</span>
                 <span class="kpi-value" th:text="${#numbers.formatCurrency(kpis.ingresosDia)}">S/ 0.00</span>
             </div>
         </div>
         <div class="glass-card kpi-card">
             <div class="kpi-icon">🧾</div>
             <div class="kpi-data">
-                <span class="kpi-label">Pedidos Cobrados</span>
+                <span class="kpi-label">Pedidos Cobrados (Hoy)</span>
                 <span class="kpi-value" th:text="${kpis.ordenesCompletadas} + ' pedidos'">0 pedidos</span>
             </div>
         </div>
         <div class="glass-card kpi-card">
             <div class="kpi-icon">🎯</div>
             <div class="kpi-data">
-                <span class="kpi-label">Ticket Promedio</span>
+                <span class="kpi-label">Ticket Promedio (Hoy)</span>
                 <span class="kpi-value" th:text="${#numbers.formatCurrency(kpis.ticketPromedio)}">S/ 0.00</span>
             </div>
         </div>
     </div>
 
-    <!-- Sub-tabs de reportes con HTMX -->
-    <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;" hx-target="#reporte-tab-content">
-        <button class="reporte-tab-btn active" hx-get="/admin/reportes/dashboard" onclick="updateSubTab(this)">📈 Dashboard</button>
-        <button class="reporte-tab-btn" hx-get="/admin/reportes/dia" onclick="updateSubTab(this)">📅 Reporte del Día</button>
-        <button class="reporte-tab-btn" hx-get="/admin/reportes/historico" onclick="updateSubTab(this)">📦 Todo lo Vendido</button>
-        <button class="reporte-tab-btn" hx-get="/admin/reportes/personalizado" onclick="updateSubTab(this)">🔍 Por Período</button>
-        <button class="reporte-tab-btn" hx-get="/admin/reportes/auditoria" onclick="updateSubTab(this)">🔒 Bitácora de Auditoría</button>
-    </div>
-
-    <div id="reporte-tab-content">
-        <!-- Por defecto carga el dashboard -->
-        <div th:replace="~{admin/reportes/dashboard :: content}"></div>
-    </div>
-
-    <script>
-        function updateSubTab(btn) {
-            document.querySelectorAll('.reporte-tab-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-        }
-    </script>
+    <!-- Contenido de Reporte de Ventas Directo (Unificado) -->
+    <div th:replace="~{admin/reportes/ventas :: content}"></div>
 </div>

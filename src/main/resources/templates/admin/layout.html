@@ -27,6 +27,10 @@
                     th:classappend="${activeTab == 'personal' ? 'active' : ''}"
                     hx-get="/admin/personal" 
                     onclick="updateActiveTab(this)">👥 Personal y Acceso</button>
+            <button class="admin-main-tab" 
+                    th:classappend="${activeTab == 'mesas' ? 'active' : ''}"
+                    hx-get="/admin/mesas" 
+                    onclick="updateActiveTab(this)">🪑 Mesas del Salón</button>
         </nav>
 
         <style>

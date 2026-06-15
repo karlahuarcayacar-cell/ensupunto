@@ -1,4 +1,4 @@
-<div th:fragment="render(pedidos, titulo, subtitulo, downloadUrl, previewType)">
+<div th:fragment="render(pedidos, titulo, subtitulo, downloadUrl, previewUrl)">
     <div class="glass-card">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
             <div>
@@ -6,8 +6,8 @@
                 <p style="color:var(--text-secondary); font-size:0.85rem;" th:text="${subtitulo}">Subtítulo</p>
             </div>
             <div style="display:flex; gap:10px;">
-                <button class="btn btn-secondary" th:attr="onclick=|previsualizarReporte('${previewType}')|">👁️ Vista Previa</button>
-                <button class="btn btn-secondary" onclick="imprimirPreview()">🖨️ Imprimir</button>
+                <button class="btn btn-secondary" th:attr="onclick=|previsualizarReporteVentas('${previewUrl}')|">👁️ Vista Previa</button>
+                <button class="btn btn-secondary" onclick="imprimirReporteVentas()">🖨️ Imprimir</button>
                 <a th:href="${downloadUrl}" target="_blank" class="btn btn-primary">⬇️ Descargar PDF</a>
             </div>
         </div>
@@ -35,10 +35,33 @@
                 </tr>
             </tbody>
         </table>
-        <div style="margin-top:15px; text-align:right;">
-            <span style="color:var(--text-secondary);">Total registros: <strong style="color:white;" th:text="${#lists.size(pedidos)}">0</strong></span>
-            &nbsp;&nbsp;
-            <span style="color:var(--text-secondary);">Total vendido: <strong style="color:var(--accent); font-size:1.1rem;" th:text="${#numbers.formatCurrency(#aggregates.sum(pedidos.![total]) ?: 0)}">S/ 0.00</strong></span>
+        <!-- Resumen & Controles de Paginación -->
+        <div style="margin-top:15px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <div style="color:var(--text-secondary); font-size:0.85rem;">
+                Total registros: <strong style="color:white;" th:text="${totalElements}">0</strong>
+                &nbsp;&nbsp;|&nbsp;&nbsp;
+                Total vendido: <strong style="color:var(--accent); font-size:1rem;" th:text="${#numbers.formatCurrency(totalVendido)}">S/ 0.00</strong>
+            </div>
+            
+            <!-- Controles de Paginación -->
+            <div th:if="${totalPages > 1}" style="display:flex; align-items:center; gap:12px;">
+                <button class="btn btn-secondary btn-sm"
+                        th:if="${currentPage > 0}"
+                        th:hx-get="'/admin/reportes/ventas/filtrar?tipo=' + ${tipo} + '&desde=' + ${desde ?: ''} + '&hasta=' + ${hasta ?: ''} + '&page=' + ${currentPage - 1}"
+                        hx-target="#ventas-reporte-resultado"
+                        hx-indicator="#buscar-loading"
+                        style="padding: 5px 12px; font-size: 0.8rem;">◀ Anterior</button>
+                
+                <span style="color: var(--text-secondary); font-size: 0.8rem; font-weight: 600;" 
+                      th:text="'Página ' + (${currentPage + 1}) + ' de ' + ${totalPages}">Página 1 de 1</span>
+                
+                <button class="btn btn-secondary btn-sm"
+                        th:if="${currentPage + 1 < totalPages}"
+                        th:hx-get="'/admin/reportes/ventas/filtrar?tipo=' + ${tipo} + '&desde=' + ${desde ?: ''} + '&hasta=' + ${hasta ?: ''} + '&page=' + ${currentPage + 1}"
+                        hx-target="#ventas-reporte-resultado"
+                        hx-indicator="#buscar-loading"
+                        style="padding: 5px 12px; font-size: 0.8rem;">Siguiente ▶</button>
+            </div>
         </div>
     </div>
 
@@ -53,41 +76,28 @@
                     onload="document.getElementById('preview-loading').style.display='none';"></iframe>
         </div>
     </div>
-</div>
 
-<!-- Script global de vista previa (colocar al final del archivo, fuera del fragment, o en un fragment aparte si se incluye en varios templates) -->
-<script th:fragment="preview-script">
-function previsualizarReporte(tipo) {
-    const container = document.getElementById('preview-container');
-    const iframe = document.getElementById('preview-iframe');
-    const loading = document.getElementById('preview-loading');
-    let url = '';
+    <!-- Script de vista previa incorporado dentro del fragmento para ejecución de HTMX -->
+    <script>
+    function previsualizarReporteVentas(url) {
+        const container = document.getElementById('preview-container');
+        const iframe = document.getElementById('preview-iframe');
+        const loading = document.getElementById('preview-loading');
 
-    if (tipo === 'personalizado') {
-        const desde = document.getElementById('desdeInput')?.value;
-        const hasta = document.getElementById('hastaInput')?.value;
-        if (!desde || !hasta) {
-            alert('Selecciona ambas fechas (Desde / Hasta) antes de generar la vista previa.');
+        loading.style.display = 'block';
+        iframe.src = url;
+        container.style.display = 'block';
+        container.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function imprimirReporteVentas() {
+        const iframe = document.getElementById('preview-iframe');
+        if (!iframe || !iframe.src) {
+            alert('Primero genera la Vista Previa del reporte.');
             return;
         }
-        url = `/admin/reporte/preview/personalizado?desde=${desde}&hasta=${hasta}`;
-    } else {
-        url = `/admin/reporte/preview/${tipo}`;
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
     }
-
-    loading.style.display = 'block';
-    iframe.src = url;
-    container.style.display = 'block';
-    container.scrollIntoView({ behavior: 'smooth' });
-}
-
-function imprimirPreview() {
-    const iframe = document.getElementById('preview-iframe');
-    if (!iframe.src) {
-        alert('Primero genera la Vista Previa del reporte.');
-        return;
-    }
-    iframe.contentWindow.focus();
-    iframe.contentWindow.print();
-}
-</script>
+    </script>
+</div>

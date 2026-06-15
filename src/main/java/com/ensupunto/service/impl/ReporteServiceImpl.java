@@ -171,6 +171,7 @@ public class ReporteServiceImpl implements ReporteService {
             Map<String, Object> params = new HashMap<>();
             params.put("TOP_PLATOS", topPlatos);
             params.put("FECHA_REPORTE", fechaLabel);
+            params.put("TITULO_REPORTE", titulo);
 
             ClassPathResource resource = new ClassPathResource("reportes/reporte_ventas.jrxml");
             if (!resource.exists()) {

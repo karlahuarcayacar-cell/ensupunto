@@ -1,0 +1,67 @@
+<div th:fragment="content">
+    <div class="glass-card" style="margin-bottom: 20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:12px;">
+            <div>
+                <h3 style="color:white; font-size:1.1rem; margin:0;">Filtros de Reporte de Ventas</h3>
+                <p style="color:var(--text-secondary); font-size:0.82rem; margin:5px 0 0 0;">Filtra las ventas por rango diario, histórico o fechas específicas.</p>
+            </div>
+        </div>
+        
+        <form hx-get="/admin/reportes/ventas/filtrar" 
+              hx-target="#ventas-reporte-resultado" 
+              hx-indicator="#buscar-loading" 
+              style="display:flex; gap:15px; align-items:center; flex-wrap:wrap;">
+            
+            <div style="display:flex; flex-direction:column; gap:5px;">
+                <label style="color:var(--text-secondary); font-size:0.8rem; font-weight:600;">Rango de Búsqueda</label>
+                <select name="tipo" id="filtro-tipo" class="date-input" style="padding:8px 12px; width:220px;" onchange="toggleDateInputs(this.value)">
+                    <option value="hoy" selected>📅 Reporte del Día</option>
+                    <option value="historico">📦 Todo lo Vendido (Histórico)</option>
+                    <option value="personalizado">🔍 Rango Personalizado</option>
+                </select>
+            </div>
+            
+            <div id="grupo-fechas" style="display:none; gap:15px; align-items:center;">
+                <div style="display:flex; flex-direction:column; gap:5px;">
+                    <label style="color:var(--text-secondary); font-size:0.8rem; font-weight:600;">Desde</label>
+                    <input type="date" name="desde" id="fecha-desde" class="date-input" style="width:150px;">
+                </div>
+                <div style="display:flex; flex-direction:column; gap:5px;">
+                    <label style="color:var(--text-secondary); font-size:0.8rem; font-weight:600;">Hasta</label>
+                    <input type="date" name="hasta" id="fecha-hasta" class="date-input" style="width:150px;">
+                </div>
+            </div>
+            
+            <div style="align-self:flex-end;">
+                <button type="submit" class="btn btn-primary" style="padding:10px 20px;">🔍 Buscar Ventas</button>
+            </div>
+        </form>
+        
+        <div id="buscar-loading" class="htmx-indicator" style="color: var(--accent); font-weight: bold; margin-top: 15px; font-size: 0.9rem;">
+            ⏳ Procesando consulta de ventas y preparando reporte...
+        </div>
+    </div>
+    
+    <div id="ventas-reporte-resultado">
+        <!-- Carga inicial del reporte (por defecto: hoy) -->
+        <div th:replace="~{admin/reportes/tabla_pedidos :: render(pedidos=${pedidos}, titulo=${titulo}, subtitulo=${subtitulo}, downloadUrl=${downloadUrl}, previewUrl=${previewUrl})}"></div>
+    </div>
+
+    <script>
+        function toggleDateInputs(value) {
+            const dateGroup = document.getElementById('grupo-fechas');
+            const desdeInput = document.getElementById('fecha-desde');
+            const hastaInput = document.getElementById('fecha-hasta');
+            
+            if (value === 'personalizado') {
+                dateGroup.style.display = 'flex';
+                desdeInput.required = true;
+                hastaInput.required = true;
+            } else {
+                dateGroup.style.display = 'none';
+                desdeInput.required = false;
+                hastaInput.required = false;
+            }
+        }
+    </script>
+</div>

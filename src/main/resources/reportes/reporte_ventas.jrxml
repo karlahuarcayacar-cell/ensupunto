@@ -9,6 +9,7 @@
 
     <parameter name="TOP_PLATOS" class="java.util.List"/>
     <parameter name="FECHA_REPORTE" class="java.lang.String"/>
+    <parameter name="TITULO_REPORTE" class="java.lang.String"/>
 
     <field name="mesaNombre" class="java.lang.String"/>
     <field name="meseroNombre" class="java.lang.String"/>
@@ -47,13 +48,13 @@
 
     <columnHeader>
         <band height="40" splitType="Stretch">
-            <staticText>
+            <textField>
                 <reportElement x="0" y="0" width="535" height="18" forecolor="#FF6600"/>
                 <textElement>
                     <font size="11" isBold="true"/>
                 </textElement>
-                <text><![CDATA[VENTAS DEL DIA]]></text>
-            </staticText>
+                <textFieldExpression><![CDATA[$P{TITULO_REPORTE} != null ? $P{TITULO_REPORTE}.toUpperCase() : "VENTAS DEL DIA"]]></textFieldExpression>
+            </textField>
             <staticText>
                 <reportElement x="0" y="20" width="100" height="18" mode="Opaque" backcolor="#FF6600" forecolor="#FFFFFF"/>
                 <textElement textAlignment="Center"><font size="8" isBold="true"/></textElement>

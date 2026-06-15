@@ -1,7 +1,10 @@
 package com.ensupunto.controller;
 
+import com.ensupunto.entity.Mesa;
+import com.ensupunto.entity.Pedido;
 import com.ensupunto.entity.Plato;
 import com.ensupunto.entity.Usuario;
+import com.ensupunto.service.MesaService;
 import com.ensupunto.service.PedidoService;
 import com.ensupunto.service.PlatoService;
 import com.ensupunto.service.ReporteService;
@@ -14,7 +17,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
@@ -33,6 +35,7 @@ public class AdminController {
     private final PedidoService pedidoService;
     private final PlatoService platoService;
     private final UsuarioService usuarioService;
+    private final MesaService mesaService;
     private final ModificacionPedidoRepository modificacionRepository;
 
     @GetMapping
@@ -51,59 +54,120 @@ public class AdminController {
         model.addAttribute("usuario", u);
         model.addAttribute("activeTab", "reportes");
         model.addAttribute("contentTemplate", "reportes");
+        
+        // KPIs (Hoy)
         model.addAttribute("kpis", reporteService.obtenerKpisDelDia());
-        model.addAttribute("ventasCategoria", reporteService.obtenerVentasPorCategoria());
-        model.addAttribute("topPlatos", reporteService.obtenerTopPlatos());
-        model.addAttribute("historialHoy", pedidoService.mapearPedidos(reporteService.obtenerHistorialHoy()));
+        
+        // Ventas por defecto (Hoy)
+        List<Pedido> hoy = reporteService.obtenerHistorialHoy();
+        BigDecimal totalVendido = hoy.stream()
+                .map(Pedido::getTotal)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        
+        int page = 0;
+        int size = 10;
+        int totalPedidos = hoy.size();
+        int totalPages = (int) Math.ceil((double) totalPedidos / size);
+        if (totalPages == 0) totalPages = 1;
+        
+        List<Pedido> paginated = hoy.subList(0, Math.min(size, totalPedidos));
+        
+        model.addAttribute("pedidos", pedidoService.mapearPedidos(paginated));
+        model.addAttribute("titulo", "Reporte del Día");
+        
+        String fechaHoy = LocalDate.now().format(
+            java.time.format.DateTimeFormatter.ofPattern("EEEE d 'de' MMMM 'de' yyyy", new java.util.Locale("es", "PE"))
+        );
+        model.addAttribute("subtitulo", fechaHoy);
+        model.addAttribute("downloadUrl", "/admin/reporte/ventas");
+        model.addAttribute("previewUrl", "/admin/reporte/preview/dia");
+        
+        // Paginacion & Resumen
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", totalPages);
+        model.addAttribute("totalElements", totalPedidos);
+        model.addAttribute("totalVendido", totalVendido);
+        model.addAttribute("pageSize", size);
+        model.addAttribute("tipo", "hoy");
         
         return hxRequest ? "admin/reportes :: content" : "admin/layout";
     }
 
-    @GetMapping("/reportes/dashboard")
-    public String dashboardFragment(Model model) {
-        model.addAttribute("ventasCategoria", reporteService.obtenerVentasPorCategoria());
-        model.addAttribute("topPlatos", reporteService.obtenerTopPlatos());
-        model.addAttribute("historialHoy", pedidoService.mapearPedidos(reporteService.obtenerHistorialHoy()));
-        return "admin/reportes/dashboard :: content";
-    }
-
-    @GetMapping("/reportes/dia")
-    public String reporteDiaFragment(Model model) {
-        List<Map<String, Object>> pedidos = pedidoService.mapearPedidos(reporteService.obtenerHistorialHoy());
+    @GetMapping("/reportes/ventas/filtrar")
+    public String filtrarVentas(
+            @RequestParam String tipo,
+            @RequestParam(required = false) String desde,
+            @RequestParam(required = false) String hasta,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            Model model) {
+        
+        List<Pedido> pedidos;
+        String titulo;
+        String subtitulo;
+        String downloadUrl;
+        String previewUrl;
+        
+        if ("historico".equals(tipo)) {
+            pedidos = reporteService.obtenerHistorialCompleto();
+            titulo = "Todo lo Vendido (Histórico)";
+            subtitulo = "Historial completo de ventas registradas";
+            downloadUrl = "/admin/reporte/historico";
+            previewUrl = "/admin/reporte/preview/historico";
+        } else if ("personalizado".equals(tipo)) {
+            LocalDate fechaDesde = LocalDate.parse(desde);
+            LocalDate fechaHasta = LocalDate.parse(hasta);
+            pedidos = reporteService.obtenerHistorialPeriodo(fechaDesde, fechaHasta);
+            titulo = "Reporte por Período";
+            subtitulo = "Desde " + desde + " hasta " + hasta;
+            downloadUrl = "/admin/reporte/periodo?desde=" + desde + "&hasta=" + hasta;
+            previewUrl = "/admin/reporte/preview/personalizado?desde=" + desde + "&hasta=" + hasta;
+        } else { // hoy
+            pedidos = reporteService.obtenerHistorialHoy();
+            titulo = "Reporte del Día";
+            String fechaHoy = LocalDate.now().format(
+                java.time.format.DateTimeFormatter.ofPattern("EEEE d 'de' MMMM 'de' yyyy", new java.util.Locale("es", "PE"))
+            );
+            subtitulo = fechaHoy;
+            downloadUrl = "/admin/reporte/ventas";
+            previewUrl = "/admin/reporte/preview/dia";
+        }
+        
         BigDecimal totalVendido = pedidos.stream()
-                .map(p -> (BigDecimal) p.get("total"))
+                .map(Pedido::getTotal)
                 .filter(Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        model.addAttribute("pedidos", pedidos);
+        
+        int totalPedidos = pedidos.size();
+        int totalPages = (int) Math.ceil((double) totalPedidos / size);
+        if (totalPages == 0) totalPages = 1;
+        
+        int fromIndex = page * size;
+        if (fromIndex > totalPedidos) {
+            fromIndex = 0;
+            page = 0;
+        }
+        int toIndex = Math.min(fromIndex + size, totalPedidos);
+        List<Pedido> paginated = (fromIndex < totalPedidos) ? pedidos.subList(fromIndex, toIndex) : new java.util.ArrayList<>();
+        
+        model.addAttribute("pedidos", pedidoService.mapearPedidos(paginated));
+        model.addAttribute("titulo", titulo);
+        model.addAttribute("subtitulo", subtitulo);
+        model.addAttribute("downloadUrl", downloadUrl);
+        model.addAttribute("previewUrl", previewUrl);
+        
+        // Paginacion & Resumen
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", totalPages);
+        model.addAttribute("totalElements", totalPedidos);
         model.addAttribute("totalVendido", totalVendido);
-        return "admin/reportes/dia";
-    }
-
-    @GetMapping("/reportes/historico")
-    public String reporteHistoricoFragment(Model model) {
-        List<Map<String, Object>> pedidos = pedidoService.mapearPedidos(reporteService.obtenerHistorialCompleto());
-        model.addAttribute("pedidos", pedidos);
-        model.addAttribute("totalVendido", sumarTotalPedidos(pedidos));
-        return "admin/reportes/historico";
-    }
-
-    @GetMapping("/reportes/personalizado")
-    public String reportePersonalizadoFragment() {
-        return "admin/reportes/personalizado :: content";
-    }
-
-    @GetMapping("/reportes/personalizado/buscar")
-    public String buscarPorPeriodo(@RequestParam String desde, @RequestParam String hasta, Model model) {
-        LocalDate fechaDesde = LocalDate.parse(desde);
-        LocalDate fechaHasta = LocalDate.parse(hasta);
-        List<Map<String, Object>> pedidos = pedidoService.mapearPedidos(reporteService.obtenerHistorialPeriodo(fechaDesde, fechaHasta));
-        model.addAttribute("pedidos", pedidos);
-        model.addAttribute("totalVendido", sumarTotalPedidos(pedidos));
-        model.addAttribute("titulo", "Reporte por Período");
-        model.addAttribute("subtitulo", "Desde " + desde + " hasta " + hasta);
-        model.addAttribute("downloadUrl", "/admin/reporte/periodo?desde=" + desde + "&hasta=" + hasta);
-        model.addAttribute("previewType", "personalizado");
-        return "admin/reportes/tabla_pedidos :: render(pedidos=${pedidos}, titulo=${titulo}, subtitulo=${subtitulo}, downloadUrl=${downloadUrl}, previewType=${previewType})";
+        model.addAttribute("pageSize", size);
+        model.addAttribute("tipo", tipo);
+        model.addAttribute("desde", desde);
+        model.addAttribute("hasta", hasta);
+        
+        return "admin/reportes/tabla_pedidos :: render(pedidos=${pedidos}, titulo=${titulo}, subtitulo=${subtitulo}, downloadUrl=${downloadUrl}, previewUrl=${previewUrl})";
     }
 
     @GetMapping("/reportes/auditoria")
@@ -200,6 +264,51 @@ public class AdminController {
         return personalTab(model, u, hxRequest);
     }
 
+    // --- MESAS TAB ---
+
+    @GetMapping("/mesas")
+    public String mesasTab(Model model, @SessionAttribute("usuarioLogueado") Usuario u, @RequestHeader(value = "HX-Request", required = false) boolean hxRequest) {
+        model.addAttribute("usuario", u);
+        model.addAttribute("activeTab", "mesas");
+        model.addAttribute("contentTemplate", "mesas/list");
+        model.addAttribute("mesas", mesaService.listarTodas());
+        return hxRequest ? "admin/mesas/list :: content" : "admin/layout";
+    }
+
+    @GetMapping("/mesas/nuevo")
+    public String nuevaMesaForm(Model model) {
+        model.addAttribute("mesa", new Mesa());
+        return "admin/mesas/form_modal :: form";
+    }
+
+    @GetMapping("/mesas/editar/{id}")
+    public String editarMesaForm(@PathVariable Integer id, Model model) {
+        model.addAttribute("mesa", mesaService.buscarPorId(id));
+        return "admin/mesas/form_modal :: form";
+    }
+
+    @PostMapping("/mesas/guardar")
+    public String guardarMesa(@ModelAttribute Mesa mesa, Model model, @SessionAttribute("usuarioLogueado") Usuario u, @RequestHeader(value = "HX-Request", required = false) boolean hxRequest) {
+        try {
+            mesaService.guardar(mesa);
+            model.addAttribute("successMsg", "La mesa se guardó exitosamente.");
+        } catch (Exception e) {
+            model.addAttribute("errorMsg", "Ocurrió un error al guardar la mesa: " + e.getMessage());
+        }
+        return mesasTab(model, u, hxRequest);
+    }
+
+    @DeleteMapping("/mesas/{id}")
+    public String eliminarMesa(@PathVariable Integer id, Model model, @SessionAttribute("usuarioLogueado") Usuario u, @RequestHeader(value = "HX-Request", required = false) boolean hxRequest) {
+        try {
+            mesaService.eliminar(id);
+            model.addAttribute("successMsg", "La mesa ha sido eliminada exitosamente.");
+        } catch (Exception e) {
+            model.addAttribute("errorMsg", "No se puede eliminar la mesa porque tiene pedidos (activos o históricos) asociados en el salón.");
+        }
+        return mesasTab(model, u, hxRequest);
+    }
+
     // --- REPORTE PDF DOWNLOADS ---
 
     @GetMapping("/reporte/ventas")
@@ -273,15 +382,4 @@ public class AdminController {
         }
     }
     
-    // Mantener APIs antiguas por si acaso para compatibilidad parcial (opcional)
-    @GetMapping("/api/kpis") @ResponseBody public Map<String, Object> getKpis() { return reporteService.obtenerKpisDelDia(); }
-    @GetMapping("/api/ventas-categoria") @ResponseBody public Map<String, Object> getVentasCategoria() { return reporteService.obtenerVentasPorCategoria(); }
-    @GetMapping("/api/top-platos") @ResponseBody public Map<String, Object> getTopPlatos() { return reporteService.obtenerTopPlatos(); }
-
-    private BigDecimal sumarTotalPedidos(List<Map<String, Object>> pedidos) {
-        return pedidos.stream()
-                .map(p -> (BigDecimal) p.get("total"))
-                .filter(Objects::nonNull)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-    }
 }
