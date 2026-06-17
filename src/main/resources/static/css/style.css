@@ -1,5 +1,43 @@
-/* Shared UI components for En su punto SAC */
+/*
+ * ==================================================================================
+ *   DISEÑO DE INTERFAZ Y ARQUITECTURA CSS - EN SU PUNTO SAC (GUÍA ACADÉMICA)
+ * ==================================================================================
+ * Este archivo contiene toda la lógica de estilos (Vanilla CSS) de la aplicación.
+ * Ha sido estructurado bajo principios modernos de diseño web para ofrecer una 
+ * experiencia premium (Wow factor), responsiva y reactiva en combinación con HTMX.
+ * 
+ * CONCEPTOS CLAVE A SUSTENTAR EN LA EVALUACIÓN:
+ * 
+ * 1. VARIABLES CSS (:root) Y DISEÑO SISTEMÁTICO:
+ *    - Definido al final del archivo para centralizar el "Design System".
+ *    - Colores Semánticos: Fondos oscuros de alta profundidad (--bg-primary, --bg-secondary)
+ *      que mitigan la fatiga visual.
+ *    - Colores de Estado: Representación visual inequívoca del ciclo de vida de los pedidos
+ *      (--status-free, --status-waiting, --status-cooking, --status-eating, etc.).
+ *    - Tipografía: Uso de 'Outfit' para encabezados (moderno/geométrico) y 'Plus Jakarta Sans'
+ *      para el cuerpo, optimizando legibilidad.
+ * 
+ * 2. TÉCNICAS DE DISEÑO PREMIUM (AESTHETICS):
+ *    - Glassmorphism (.glass, .glass-card): Uso de fondos translúcidos (rgba), filtros de 
+ *      desenfoque de fondo (backdrop-filter: blur) y bordes finos semi-transparentes.
+ *      Simula un efecto de cristal flotando sobre el fondo oscuro de la aplicación.
+ *    - Micro-interacciones y Animaciones: Transiciones suaves (transition: all 0.3s cubic-bezier)
+ *      con transformaciones físicas (translateY) al interactuar con las tarjetas y botones.
+ * 
+ * 3. MODELOS DE DISEÑO DE MAQUETACIÓN:
+ *    - CSS Grid: Usado en la cuadrícula de mesas (.tables-grid) y selección de platos (.dish-grid)
+ *      para alinear elementos automáticamente según el espacio disponible.
+ *    - CSS Flexbox: Empleado en cabeceras, botones (.btn), paneles laterales (.cashier-layout) 
+ *      y distribución del flujo vertical (.app-container).
+ * 
+ * 4. MÓDULOS DE ESTILOS POR ROL:
+ *    - 1. Mesero: Dashboard de mesas interactivas, catálogo de platos por categorías y drawer del pedido.
+ *    - 2. Chef: Pantalla de KDS (Kitchen Display System) estructurada en tarjetas de tickets.
+ *    - 3. Cajero: Interfaz de facturación con previsualización fidedigna de un ticket de venta impreso.
+ *    - 4. Admin: Tarjetas KPI para estadísticas financieras e interfaces limpias para los CRUDs.
+ */
 
+/* Componentes UI Compartidos para En su punto SAC */
 /* Buttons */
 .btn {
   display: inline-flex;

@@ -1,3 +1,29 @@
+<!--
+  TECNOLOGÍA DE VISTA DE FRAGMENTO: Carta del Menú (list.html)
+  
+  Propósito:
+    Este fragmento HTML presenta la tabla de control del menú del restaurante. 
+    Permite visualizar la lista completa de platos ofertados, sus categorías, descripciones y precios.
+    Además, expone accesos directos para la edición o eliminación de platos en tiempo real utilizando AJAX con HTMX.
+
+  Tecnologías Utilizadas:
+    - Thymeleaf:
+      * th:fragment="content": Registra este fragmento HTML bajo el identificador 'content'.
+      * th:each="p : ${platos}": Estructura repetitiva de control para iterar sobre la lista de platos.
+      * th:classappend="${p.categoria}": Asocia una clase CSS dinámica correspondiente al tipo de plato (ej. entradas, segundos, bebidas, postres) para aplicar un color de píldora temático.
+      * th:text con #numbers.formatCurrency: Muestra y da formato localizado al precio del plato en moneda local.
+    - HTMX:
+      * hx-get="/admin/platos/nuevo": Dispara una petición GET AJAX para retornar el formulario modal de registro de plato.
+      * hx-swap="beforeend": Inyecta el fragmento modal al final del body.
+      * hx-target="body": Orienta la modal al body general del dashboard.
+      * th:hx-get: Genera una URL con el id dinámico del plato para abrir la modal de edición.
+      * th:hx-delete: Genera una solicitud DELETE asíncrona para eliminar el plato del catálogo.
+      * hx-confirm: Muestra una ventana emergente de confirmación nativa.
+      * hx-target="#admin-content": Recibe la lista actualizada del backend y refresca la sección correspondiente en la interfaz SPA.
+
+  Contexto de Datos (Model Attributes):
+    - platos: Lista de todas las entidades Plato registradas en base de datos.
+-->
 <div th:fragment="content" class="admin-section">
     <div class="glass-card">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
@@ -5,6 +31,7 @@
                 <h3 style="color:white; font-size:1.1rem;">Carta del Menú</h3>
                 <p style="color:var(--text-secondary); font-size:0.85rem;">Agrega, modifica o elimina platos de la oferta del restaurante.</p>
             </div>
+            <!-- HTMX: Solicita el formulario para registrar un plato y lo agrega al final de la página -->
             <button class="btn btn-primary" hx-get="/admin/platos/nuevo" hx-target="body" hx-swap="beforeend">+ Nuevo Plato</button>
         </div>
         <table class="admin-table">
@@ -18,10 +45,13 @@
                 </tr>
             </thead>
             <tbody>
+                <!-- Thymeleaf: Itera en la lista de platos de la carta -->
                 <tr th:each="p : ${platos}">
                     <td style="color:white; font-weight:600;" th:text="${p.nombre}">Nombre</td>
+                    <!-- Thymeleaf: Modifica la pildora añadiendo la clase de la categoría (entradas, segundos, bebidas, postres) -->
                     <td><span class="cat-pill" th:classappend="${p.categoria}" th:text="${#strings.toUpperCase(p.categoria)}">CATEGORIA</span></td>
                     <td style="color:var(--text-secondary); font-size:0.82rem;" th:text="${p.descripcion}">Descripción</td>
+                    <!-- Thymeleaf: Utilitario para el formateo de monedas locales (S/.) en base al precio float/decimal -->
                     <td style="color:var(--accent); font-weight:700;" th:text="${#numbers.formatCurrency(p.precio)}">S/ 0.00</td>
                     <td style="display:flex; gap:8px;">
                         <button class="btn btn-secondary btn-sm" 

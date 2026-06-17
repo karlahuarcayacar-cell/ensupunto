@@ -1,10 +1,36 @@
+<!-- 
+  =============================================================================
+  PROYECTO ACADÉMICO - EN SU PUNTO (Cabecera y Menú Superior Reutilizables)
+  PROPÓSITO:
+  - Definición de fragmentos globales reutilizables para el encabezado de página (head) 
+    y la barra de navegación superior (navbar). Sincroniza metadatos de sesión y estilos.
+  
+  TECNOLOGÍAS EXPLICADAS:
+  1. Thymeleaf:
+     - th:fragment="head(title)": Fragmento parametrizado que recibe una variable 'title' 
+       desde la vista que lo invoca para poblar el elemento `<title>`.
+     - th:href="@{/css/style.css}": Expresión de enlace de Thymeleaf (`@{...}`) que 
+       resuelve automáticamente las rutas relativas considerando el context-path del servidor.
+     - th:if="${usuario != null}": Bloque condicional que renderiza el perfil del usuario 
+       únicamente si hay una sesión activa de usuario autenticado.
+     - #strings.substring: Objeto auxiliar de utilidades de cadena de Thymeleaf. Extrae la 
+       primera letra del nombre del usuario para crear un avatar de iniciales dinámico.
+     - th:classappend="${usuario.rol}": Inyecta dinámicamente el rol (ej. 'cajero', 'chef') 
+       como clase CSS, aplicando estilos de fondo específicos definidos en el bloque `<style>`.
+  2. Contexto de Datos:
+     - ${usuario}: Objeto Usuario en sesión (nombre, rol).
+  =============================================================================
+-->
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
+<!-- Fragmento parametrizado 'head' para configurar metadatos, estilos comunes y título dinámico -->
 <head th:fragment="head(title)">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Thymeleaf @{}: Genera una ruta contextual segura para cargar la hoja de estilos -->
 	<link rel="stylesheet" th:href="@{/css/style.css}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Thymeleaf th:text: Concatena dinámicamente el título recibido con el nombre de la empresa -->
     <title th:text="${title} + ' - En su punto SAC'">En su punto</title>
     <style>
         .top-navbar {
@@ -54,6 +80,7 @@
     </style>
 </head>
 <body>
+    <!-- Fragmento global de barra de navegación superior (navbar) -->
     <header th:fragment="navbar" class="top-navbar">
         <div class="brand-section">
             <div class="brand-logo" style="background: transparent; box-shadow: none; font-size: 1.5rem;">🔥</div>
@@ -63,11 +90,14 @@
             </div>
         </div>
         
+        <!-- Renderizado dinámico del perfil de usuario y rol autenticado -->
         <div class="user-profile-section" th:if="${usuario != null}">
+            <!-- Thymeleaf #strings.substring: Obtiene la inicial del usuario para mostrarla en el avatar circular -->
             <div class="avatar" th:text="${#strings.substring(usuario.nombre,0,1)}">U</div>
             <div class="profile-info" style="text-align: right; margin-right: 10px;">
                 <div class="profile-name" th:text="${usuario.nombre}">Usuario</div>
             </div>
+            <!-- th:classappend: Modifica el color de fondo del badge según el rol del usuario actual -->
             <span class="role-badge" th:classappend="${usuario.rol}" th:text="${usuario.rol}">Rol</span>
             <a th:href="@{/logout}" class="logout-btn" title="Cerrar Sesión" style="margin-left: 10px;">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>

@@ -1,9 +1,30 @@
+<!--
+  TECNOLOGÍA DE VISTA DE MODAL: Formulario de Platos (form_modal.html)
+  
+  Propósito:
+    Este fragmento HTML define una interfaz modal para crear nuevos platos o editar platos ya existentes
+    dentro de la carta del restaurante (entradas, segundos, bebidas, postres).
+    Soporta validaciones de campos flotantes y precios monetarios antes de enviar vía HTMX.
+
+  Tecnologías Utilizadas:
+    - Thymeleaf:
+      * th:fragment="form": Expone el bloque actual como fragmento con nombre 'form' para el submódulo de platos.
+      * th:text: Renderiza de manera dinámica la leyenda superior ("🍽️ Nuevo Plato" o "✏️ Editar Plato") evaluando `plato.id`.
+      * th:value: Vincula los campos de texto y número a los atributos mapeados del objeto 'plato'.
+      * th:selected: Pre-selecciona la categoría del plato según el valor guardado en el backend.
+    - HTMX:
+      * hx-post="/admin/platos/guardar": Transmite los datos a Spring Boot de forma asíncrona mediante POST.
+      * hx-target="#admin-content": Recibe la lista actualizada de platos del restaurante y la renderiza de inmediato en el contenedor del dashboard.
+      * hx-on::after-request: Deshace el elemento del modal del DOM si la operación del servidor es confirmada como exitosa.
+-->
 <div id="plato-modal" th:fragment="form" class="modal-overlay" style="backdrop-filter: blur(8px); opacity: 1; pointer-events: auto; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(10, 14, 23, 0.8); z-index: 2000; display: flex; align-items: center; justify-content: center;">
     <div class="modal-container" style="background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-lg); width: 90%; max-width: 450px; box-shadow: var(--shadow-lg); display: flex; flex-direction: column;">
         <div class="modal-header" style="padding: 20px 24px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
+            <!-- Thymeleaf: Cambia el título de cabecera dinámicamente si es nuevo plato o edición -->
             <h3 class="modal-title" style="font-size: 1.25rem; color: white;" th:text="${plato.id == null ? '🍽️ Nuevo Plato' : '✏️ Editar Plato'}">Título</h3>
             <button class="modal-close" onclick="this.closest('.modal-overlay').remove()" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.5rem; width: 32px; height: 32px; border-radius: 50%;">&times;</button>
         </div>
+        <!-- HTMX: Envía por POST a '/admin/platos/guardar', actualizando la sección '#admin-content' y removiendo el modal en caso de éxito -->
         <form hx-post="/admin/platos/guardar" hx-target="#admin-content" hx-on::after-request="if(event.detail.successful) this.closest('.modal-overlay').remove()">
             <input type="hidden" name="id" th:value="${plato.id}">
             <div class="modal-body" style="padding: 24px; color: var(--text-secondary); max-height: 70vh; overflow-y: auto;">
@@ -13,6 +34,7 @@
                 </div>
                 <div class="form-group" style="margin-bottom:15px;">
                     <label style="display:block; margin-bottom:5px;">Categoría</label>
+                    <!-- Menú para categorías. th:selected comprueba la opción activa -->
                     <select name="categoria" class="form-control" style="width:100%;">
                         <option value="entradas" th:selected="${plato.categoria == 'entradas'}">Entradas</option>
                         <option value="segundos" th:selected="${plato.categoria == 'segundos'}">Segundos</option>
@@ -22,10 +44,12 @@
                 </div>
                 <div class="form-group" style="margin-bottom:15px;">
                     <label style="display:block; margin-bottom:5px;">Precio (S/.)</label>
+                    <!-- Valida que el precio sea positivo y maneje hasta 2 decimales para soles peruanos -->
                     <input type="number" name="precio" class="form-control" th:value="${plato.precio}" step="0.10" min="0.01" required style="width:100%;">
                 </div>
                 <div class="form-group" style="margin-bottom:15px;">
                     <label style="display:block; margin-bottom:5px;">Descripción</label>
+                    <!-- Textarea con binding bidireccional a través de th:text -->
                     <textarea name="descripcion" class="form-control" rows="3" th:text="${plato.descripcion}" style="width:100%;"></textarea>
                 </div>
             </div>

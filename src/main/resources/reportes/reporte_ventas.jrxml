@@ -1,4 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+    PLANTILLA DE REPORTE: JASPERREPORTS (.jrxml)
+    
+    CONCEPTOS ACADÉMICOS CLAVE DE JASPERREPORTS:
+    1. Estructura de un Documento JRXML:
+       Es un archivo XML que define visualmente la estructura del informe. Posee bandas (Bands) que se repiten según su rol:
+       - <title>: Se dibuja una sola vez al inicio del reporte.
+       - <columnHeader>: Encabezados de columnas, se dibujan al inicio de cada página.
+       - <detail>: Banda iterativa. Se ejecuta una vez por cada registro (fila) provisto por el JRDataSource.
+       - <summary>: Se dibuja al final del informe. Ideal para totales o gráficos consolidados.
+
+    2. Elementos Clave:
+       - <parameter>: Variables globales pasadas desde Java (un Map). Ejemplo: Título y Lista del Top 5 Platos.
+       - <field>: Campos individuales que representan los atributos de cada objeto de la lista de datos (JRDataSource).
+-->
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports"
               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
               xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports
@@ -7,18 +22,22 @@
               columnWidth="535" leftMargin="30" rightMargin="30"
               topMargin="20" bottomMargin="20" uuid="a1b2c3d4-e5f6-7890-abcd-ef1234567890">
 
+    <!-- PARÁMETROS GLOBALES (Pasados desde el Map en Java) -->
     <parameter name="TOP_PLATOS" class="java.util.List"/>
     <parameter name="FECHA_REPORTE" class="java.lang.String"/>
     <parameter name="TITULO_REPORTE" class="java.lang.String"/>
 
+    <!-- CAMPOS DE FILA (Definidos para el JRDataSource de la tabla) -->
     <field name="mesaNombre" class="java.lang.String"/>
     <field name="meseroNombre" class="java.lang.String"/>
     <field name="total" class="java.math.BigDecimal"/>
     <field name="metodoPago" class="java.lang.String"/>
     <field name="fechaPago" class="java.lang.String"/>
 
+    <!-- BANDA: TÍTULO DEL DOCUMENTO (Se dibuja al principio del PDF) -->
     <title>
         <band height="80" splitType="Stretch">
+            <!-- Nombre de la Empresa con Color Corporativo (#FF6600 - Naranja) -->
             <staticText>
                 <reportElement x="0" y="0" width="535" height="30" forecolor="#FF6600"/>
                 <textElement textAlignment="Center">
@@ -33,6 +52,7 @@
                 </textElement>
                 <text><![CDATA[Sistema de Gestion de Restaurante - Reporte de Ventas]]></text>
             </staticText>
+            <!-- Expresión dinámica que inyecta la fecha formateada en Java -->
             <textField>
                 <reportElement x="0" y="48" width="535" height="15" forecolor="#666666"/>
                 <textElement textAlignment="Center">
@@ -46,8 +66,10 @@
         </band>
     </title>
 
+    <!-- BANDA: CABECERA DE LA TABLA (Nombre de columnas del listado principal) -->
     <columnHeader>
         <band height="40" splitType="Stretch">
+            <!-- Título dinámico del reporte (Diario, Histórico, Periodo) -->
             <textField>
                 <reportElement x="0" y="0" width="535" height="18" forecolor="#FF6600"/>
                 <textElement>
@@ -83,8 +105,10 @@
         </band>
     </columnHeader>
 
+    <!-- BANDA: DETALLE ITERATIVO (Se repite una vez por cada fila de datos de la lista en Java) -->
     <detail>
         <band height="18" splitType="Stretch">
+            <!-- Inyecta los valores correspondientes al $F{campo} asignado -->
             <textField>
                 <reportElement x="0" y="0" width="100" height="18" forecolor="#333333"/>
                 <textElement textAlignment="Center"><font size="8"/></textElement>
@@ -113,6 +137,7 @@
         </band>
     </detail>
 
+    <!-- BANDA: RESUMEN FINAL (Dibuja el ranking de los 5 platos más vendidos del día al final) -->
     <summary>
         <band height="200" splitType="Stretch">
             <line>
@@ -146,6 +171,13 @@
                 <text><![CDATA[TOTAL (S/)]]></text>
             </staticText>
 
+            <!-- 
+                EXTRACCIÓN Y DIBUJADO DE ELEMENTOS DE LA LISTA DEL PARÁMETRO $P{TOP_PLATOS}:
+                Dado que JasperReports nativo no posee un bucle libre dentro de las bandas (fuera de Subreports o List components),
+                se accede directamente por índice a la lista ($P{TOP_PLATOS}.get(i)) y se mapea a su clave (nombre, unidades, etc.),
+                validando si hay suficientes elementos (.size() > i) para evitar excepciones de índice fuera de rango.
+            -->
+            <!-- Puesto 1 -->
             <textField isBlankWhenNull="true">
                 <reportElement x="0" y="62" width="200" height="16" forecolor="#333333"/>
                 <textElement textAlignment="Center"><font size="8"/></textElement>
@@ -167,6 +199,7 @@
                 <textFieldExpression><![CDATA[$P{TOP_PLATOS}.size() > 0 ? ((java.util.Map)$P{TOP_PLATOS}.get(0)).get("totalVendido") : ""]]></textFieldExpression>
             </textField>
 
+            <!-- Puesto 2 (Fila con color de fondo alterno) -->
             <textField isBlankWhenNull="true">
                 <reportElement x="0" y="80" width="200" height="16" forecolor="#333333" backcolor="#FFF5EE" mode="Opaque"/>
                 <textElement textAlignment="Center"><font size="8"/></textElement>
@@ -188,6 +221,7 @@
                 <textFieldExpression><![CDATA[$P{TOP_PLATOS}.size() > 1 ? ((java.util.Map)$P{TOP_PLATOS}.get(1)).get("totalVendido") : ""]]></textFieldExpression>
             </textField>
 
+            <!-- Puesto 3 -->
             <textField isBlankWhenNull="true">
                 <reportElement x="0" y="98" width="200" height="16" forecolor="#333333"/>
                 <textElement textAlignment="Center"><font size="8"/></textElement>
@@ -209,6 +243,7 @@
                 <textFieldExpression><![CDATA[$P{TOP_PLATOS}.size() > 2 ? ((java.util.Map)$P{TOP_PLATOS}.get(2)).get("totalVendido") : ""]]></textFieldExpression>
             </textField>
 
+            <!-- Puesto 4 (Fila con color de fondo alterno) -->
             <textField isBlankWhenNull="true">
                 <reportElement x="0" y="116" width="200" height="16" forecolor="#333333" backcolor="#FFF5EE" mode="Opaque"/>
                 <textElement textAlignment="Center"><font size="8"/></textElement>
@@ -230,6 +265,7 @@
                 <textFieldExpression><![CDATA[$P{TOP_PLATOS}.size() > 3 ? ((java.util.Map)$P{TOP_PLATOS}.get(3)).get("totalVendido") : ""]]></textFieldExpression>
             </textField>
 
+            <!-- Puesto 5 -->
             <textField isBlankWhenNull="true">
                 <reportElement x="0" y="134" width="200" height="16" forecolor="#333333"/>
                 <textElement textAlignment="Center"><font size="8"/></textElement>
@@ -254,6 +290,7 @@
             <line>
                 <reportElement x="0" y="158" width="535" height="1" forecolor="#FF6600"/>
             </line>
+            <!-- Pie de Reporte -->
             <staticText>
                 <reportElement x="0" y="163" width="535" height="12" forecolor="#999999"/>
                 <textElement textAlignment="Center"><font size="7"/></textElement>
@@ -262,3 +299,4 @@
         </band>
     </summary>
 </jasperReport>
+

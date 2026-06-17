@@ -1,8 +1,42 @@
+<!-- 
+  =============================================================================
+  PROYECTO ACADÉMICO - EN SU PUNTO (KDS / Monitor de Cocina del Chef)
+  PROPÓSITO:
+  - Interfaz de Monitor de Cocina (Kitchen Display System - KDS). Muestra los tickets 
+    de pedidos pendientes y en preparación. Permite al chef cambiar el estado 
+    del pedido (Iniciar Preparación / Terminar) en tiempo real.
+  
+  TECNOLOGÍAS EXPLICADAS:
+  1. Thymeleaf:
+     - th:replace: Modularización e inclusión del encabezado y menú global.
+     - th:fragment="lista-pedidos": Bloque HTML delimitable que el servidor puede 
+       renderizar y retornar por separado para respuestas HTMX.
+     - th:classappend: Formatea dinámicamente las clases del ticket según su estado.
+     - th:data-time: Guarda la fecha de creación del pedido en formato ISO para ser 
+       procesado por JavaScript en el lado del cliente.
+     - th:if: Renderiza condicionalmente el botón de acción según el estado actual del pedido.
+  2. HTMX (Sincronización en tiempo real vía Polling):
+     - hx-get="/chef/fragment/pedidos": Consulta el endpoint que devuelve la lista de pedidos.
+     - hx-trigger="every 5s, load": Realiza sondeo/polling pasivo automático cada 5 segundos 
+       y al cargar la página por primera vez, emulando tiempo real sin usar WebSockets.
+     - hx-swap="innerHTML": Reemplaza solo el contenido interior de '#kitchen-grid' con el 
+       HTML del fragmento de Thymeleaf retornado por el servidor.
+     - hx-put (Método PUT asíncrono): Cambia el estado del pedido de forma RESTful.
+  3. JavaScript (Cronómetro en el cliente):
+     - updateTimers(): Script local que calcula de forma dinámica el tiempo transcurrido 
+       (en formato MM:SS) de cada pedido comparando la hora actual con 'data-time'. Cambia el 
+       color a rojo si supera los 15 minutos (indicador visual SLA de rendimiento).
+  4. Contexto de Datos:
+     - ${pedidos}: Colección de Pedido (id, estado, fechaCreacion, detalles con platos y notas).
+  =============================================================================
+-->
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
+<!-- Thymeleaf: Reemplazo dinámico del fragmento 'head' del header común -->
 <head th:replace="~{fragments/header :: head('Chef Dashboard')}"></head>
 <body>
     <div class="app-container">
+        <!-- Thymeleaf: Reemplazo dinámico de la barra de navegación -->
         <header th:replace="~{fragments/header :: navbar}"></header>
         
         <main class="main-content">
@@ -13,14 +47,17 @@
                 </div>
             </div>
             
+            <!-- HTMX: Grid de cocina que realiza auto-polling cada 5 segundos para mantener la lista actualizada -->
             <div class="kitchen-grid" id="kitchen-grid" 
                  hx-get="/chef/fragment/pedidos" 
                  hx-trigger="every 5s, load" 
                  hx-swap="innerHTML">
-                <!-- Fragmento para los tickets (se usará para HTMX) -->
+                
+                <!-- Thymeleaf th:fragment: Declaración del fragmento que HTMX solicita y refresca de forma parcial -->
                 <th:block th:fragment="lista-pedidos">
                     <p th:if="${#lists.isEmpty(pedidos)}" style="color:gray;">No hay pedidos pendientes.</p>
 
+                    <!-- Generación dinámica de tickets de cocina -->
                     <div th:each="p : ${pedidos}" 
                          class="kitchen-ticket" 
                          th:classappend="${p.estado == 'cocina_preparacion' ? 'ticket-preparacion' : ''}">
@@ -28,33 +65,39 @@
                         <div class="kitchen-ticket-header">
                             <div class="ticket-meta">
                                 <span class="ticket-table-name" th:text="${p.mesa.nombre}">Mesa</span>
+                                <!-- Badge de estado condicional -->
                                 <span class="badge" 
                                       th:classappend="${p.estado == 'cocina_preparacion' ? 'badge-cooking' : 'badge-waiting'}"
                                       th:text="${p.estado == 'cocina_preparacion' ? 'Preparando' : 'En Cola'}"
                                       style="margin-left: 0px;">Estado</span>
                                 <span class="ticket-id" style="margin-left: 0px;" th:text="'#' + ${p.id}">#ID</span>
                             </div>
+                            <!-- Cronómetro: Lee el atributo data-time (inyectado por Thymeleaf) mediante JS -->
                             <div class="timer-display" 
                                  th:data-time="${p.fechaCreacion}" 
                                  style="font-family: monospace; font-size: 1.1rem; color: var(--text-secondary); margin-top: 5px;">⏱ 00:00</div>
                         </div>
                         
                         <div class="kitchen-ticket-body">
+                            <!-- Lista de platos del ticket de pedido -->
                             <div th:each="d : ${p.detalles}" class="ticket-item">
                                 <div class="ticket-item-row">
                                     <div class="ticket-item-qty" th:text="${d.cantidad}">1</div>
                                     <div class="ticket-item-name" th:text="${d.plato.nombre}">Plato</div>
                                 </div>
+                                <!-- Notas específicas de preparación (ej. sin cebolla) -->
                                 <div th:if="${d.nota != null and !d.nota.empty}" class="ticket-item-note" style="color: #f59e0b;" th:text="'⚠️ ' + ${d.nota}">Nota</div>
                             </div>
                         </div>
                         
                         <div class="kitchen-ticket-footer">
+                            <!-- HTMX: Envía un PUT asíncrono para cambiar el estado a "En Preparación" -->
                             <button th:if="${p.estado == 'cocina_pendiente'}" 
                                     class="btn btn-primary" style="width: 100%;"
                                     th:hx-put="'/chef/api/pedidos/' + ${p.id} + '/preparar'"
                                     hx-target="#kitchen-grid">👨‍🍳 Preparar Ahora</button>
                                     
+                            <!-- HTMX: Envía un PUT asíncrono para marcar el plato como listo/despachado -->
                             <button th:if="${p.estado == 'cocina_preparacion'}" 
                                     class="btn btn-success" style="width: 100%;"
                                     th:hx-put="'/chef/api/pedidos/' + ${p.id} + '/terminar'"
@@ -62,6 +105,7 @@
                         </div>
                     </div>
 
+                    <!-- Llama a la inicialización de timers tras inyectar el nuevo HTML parcial -->
                     <script>
                         if (typeof updateTimers === 'function') {
                             updateTimers();
@@ -72,8 +116,10 @@
         </main>
     </div>
 
+    <!-- Thymeleaf: Importa scripts generales -->
     <th:block th:replace="~{fragments/scripts :: commonScripts}"></th:block>
 
+    <!-- Script Inline de Thymeleaf para lógica interactiva en el cliente -->
     <script th:inline="javascript">
         function updateTimers() {
             document.querySelectorAll('.timer-display').forEach(el => {
@@ -85,8 +131,10 @@
                 let m = Math.floor(diff / 60000);
                 let s = Math.floor((diff % 60000) / 1000);
                 
+                // Formatea a dos dígitos con padStart
                 el.innerText = `⏱ ${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
                 
+                // SLA de cocina: Resalta en rojo si demora más de 15 minutos
                 if (m >= 15) {
                     el.style.color = '#ef4444';
                     el.style.fontWeight = 'bold';
@@ -94,7 +142,7 @@
             });
         }
 
-        // Ejecutar timers cada segundo
+        // Configura el intervalo global para ejecutar el cronómetro local cada segundo
         if (!window.timerInterval) {
             window.timerInterval = setInterval(updateTimers, 1000);
         }

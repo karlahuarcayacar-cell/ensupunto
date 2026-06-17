@@ -1,4 +1,25 @@
+<!--
+  TECNOLOGÍA DE VISTA DE FRAGMENTO: Reportes (reportes.html)
+  
+  Propósito:
+    Este archivo define la vista de reportes dentro del panel de administración.
+    Sirve como contenedor para los KPIs del día y delega la visualización del reporte de ventas unificado
+    a un sub-fragmento.
+
+  Tecnologías Utilizadas:
+    - Thymeleaf:
+      * th:fragment="content": Declara este bloque como un fragmento reutilizable llamado 'content'.
+      * th:text con #numbers.formatCurrency: Formatea dinámicamente un valor decimal como moneda local (ej. S/ 150.00).
+      * th:replace: Incrusta el fragmento 'content' del archivo 'admin/reportes/ventas.html'.
+
+  Contexto de Datos (Model Attributes):
+    - kpis: Objeto que contiene las estadísticas resumidas del día.
+      * kpis.ingresosDia: Ingresos totales del día actual.
+      * kpis.ordenesCompletadas: Cantidad de pedidos cobrados hoy.
+      * kpis.ticketPromedio: Ticket promedio calculado para el día.
+-->
 <div th:fragment="content" class="admin-section">
+    <!-- Estilos específicos para la sección de reportes y entrada de datos -->
     <style>
         .reporte-tab-btn {
             background: var(--bg-secondary); border: 1px solid var(--border-color);
@@ -16,31 +37,38 @@
         }
     </style>
 
-    <!-- KPIs -->
+    <!-- Indicadores clave de rendimiento (KPIs) del día actual -->
     <div class="admin-kpi-grid" style="margin-bottom: 24px;">
+        <!-- KPI: Ingresos de Hoy -->
         <div class="glass-card kpi-card">
             <div class="kpi-icon">💰</div>
             <div class="kpi-data">
                 <span class="kpi-label">Ingresos de Hoy</span>
+                <!-- Thymeleaf: Formatea el monto double/decimal a formato de moneda local configurado -->
                 <span class="kpi-value" th:text="${#numbers.formatCurrency(kpis.ingresosDia)}">S/ 0.00</span>
             </div>
         </div>
+        <!-- KPI: Pedidos Cobrados -->
         <div class="glass-card kpi-card">
             <div class="kpi-icon">🧾</div>
             <div class="kpi-data">
                 <span class="kpi-label">Pedidos Cobrados (Hoy)</span>
+                <!-- Thymeleaf: Concatenación directa de variables y texto estático -->
                 <span class="kpi-value" th:text="${kpis.ordenesCompletadas} + ' pedidos'">0 pedidos</span>
             </div>
         </div>
+        <!-- KPI: Ticket Promedio -->
         <div class="glass-card kpi-card">
             <div class="kpi-icon">🎯</div>
             <div class="kpi-data">
                 <span class="kpi-label">Ticket Promedio (Hoy)</span>
+                <!-- Thymeleaf: Formatea el promedio del ticket del restaurante -->
                 <span class="kpi-value" th:text="${#numbers.formatCurrency(kpis.ticketPromedio)}">S/ 0.00</span>
             </div>
         </div>
     </div>
 
-    <!-- Contenido de Reporte de Ventas Directo (Unificado) -->
+    <!-- Contenido de Reporte de Ventas Directo (Unificado) 
+         Thymeleaf: Incluye de manera modular el fragmento de ventas que maneja los filtros y la tabla -->
     <div th:replace="~{admin/reportes/ventas :: content}"></div>
 </div>

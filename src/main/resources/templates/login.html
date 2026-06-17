@@ -1,16 +1,40 @@
 <!DOCTYPE html>
+<!-- 
+    VISTA DE INICIO DE SESIÓN (LOGIN.HTML)
+    
+    CONCEPTOS ACADÉMICOS CLAVE DE THYMELEAF:
+    1. Vinculación del Motor de Plantillas (Thymeleaf Namespace):
+       - xmlns:th="http://www.thymeleaf.org": Habilita el uso de directivas con prefijo 'th:'
+         para procesar dinámicamente elementos HTML en el servidor antes de enviar la página al cliente.
+         
+    2. Inclusión de Fragmentos Estáticos/Dinámicos (th:replace):
+       - th:replace="~{fragments/header :: head('Login')}": Reemplaza la sección <head> actual
+         por el fragmento 'head' definido en 'fragments/header.html', pasándole 'Login' como título.
+         Esto evita reescribir links de CSS/JS en cada página.
+         
+    3. Renderizado Condicional (th:if):
+       - th:if="${error}": Evalúa si existe la variable 'error' en el modelo (enviada desde RedirectAttributes
+         en LoginController). Si existe y no es nula, renderiza este div con el mensaje.
+         
+    4. Expresiones de Enlace de URL (th:action y @{...}):
+       - th:action="@{/login}": Genera de forma segura el path de destino para el formulario POST,
+         añadiendo automáticamente el context-path de la aplicación en caso de que esté desplegada en un Tomcat externo.
+-->
 <html xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/header :: head('Login')}"></head>
 
 <body>
     <div class="login-wrapper">
         <div class="login-card">
+            <!-- Logo y títulos estilizados con CSS -->
             <div class="login-logo">EP</div>
             <h1 class="login-title">En su punto</h1>
             <p class="login-subtitle">Sistema de Gestión de Restaurante</p>
             
+            <!-- Mensaje de Alerta: se muestra únicamente si las credenciales fallan -->
             <div th:if="${error}" class="badge badge-cooking" style="margin-bottom:15px; display:block; text-align:center;" th:text="${error}"></div>
             
+            <!-- Formulario POST de Login -->
             <form th:action="@{/login}" method="post">
                 <div class="form-group">
                     <input type="text" class="form-control" name="username" placeholder="Usuario" required autocomplete="off">
@@ -23,4 +47,4 @@
         </div>
     </div>
 </body>
-</html>
+</html>

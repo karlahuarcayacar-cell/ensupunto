@@ -1,3 +1,30 @@
+<!--
+  TECNOLOGÍA DE VISTA DE FRAGMENTO: Listado del Personal (list.html)
+  
+  Propósito:
+    Este fragmento HTML muestra el cuadro general con el personal registrado en el restaurante.
+    Proporciona accesos rápidos para registrar nuevos colaboradores, editar su información actual, o
+    cambiar su estado de actividad (Activar/Desactivar) en el sistema mediante HTMX.
+
+  Tecnologías Utilizadas:
+    - Thymeleaf:
+      * th:fragment="content": Registra este bloque HTML como fragmento para su renderización dinámica.
+      * th:each="u : ${usuarios}": Estructura repetitiva de Thymeleaf que genera una fila `<tr>` para cada colaborador en el modelo.
+      * th:classappend: Permite adjuntar clases dinámicas a nivel CSS para pildoras de rol (`role-pill`) o distintivos de actividad (`badge`).
+      * th:text: Muestra de forma sanitizada propiedades como nombre, nombre de usuario y roles convertidos a mayúsculas.
+      * th:if: Sentencia condicional utilizada para mostrar alternativamente el botón de 'Desactivar' o 'Reactivar' dependiendo de si el usuario está actualmente activo o inactivo.
+    - HTMX:
+      * hx-get: Realiza solicitudes asíncronas para desplegar el formulario de creación de personal.
+      * th:hx-get: Genera dinámicamente el endpoint GET para cargar el modal de edición de un usuario específico.
+      * th:hx-delete: Realiza una llamada asíncrona DELETE para desactivar a un empleado.
+      * th:hx-put: Realiza una llamada asíncrona PUT para reactivar a un empleado previamente desactivado.
+      * hx-confirm: Muestra un mensaje de confirmación antes de desactivar o reactivar.
+      * hx-target="#admin-content": Apunta el contenido devuelto por el servidor tras la petición a la sección de administración del dashboard.
+      * hx-swap="beforeend": Agrega el modal de creación o edición al final del documento principal sin recargas.
+
+  Contexto de Datos (Model Attributes):
+    - usuarios: Colección de objetos de tipo Usuario (colaboradores del sistema).
+-->
 <div th:fragment="content" class="admin-section">
     <div class="glass-card">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
@@ -5,6 +32,7 @@
                 <h3 style="color:white; font-size:1.1rem;">Personal Registrado</h3>
                 <p style="color:var(--text-secondary); font-size:0.85rem;">Gestiona los accesos y roles del personal del restaurante.</p>
             </div>
+            <!-- HTMX: Carga el formulario de nuevo colaborador asíncronamente y lo coloca al final del body -->
             <button class="btn btn-primary" hx-get="/admin/personal/nuevo" hx-target="body" hx-swap="beforeend">+ Nuevo Colaborador</button>
         </div>
         <table class="admin-table">
@@ -18,11 +46,14 @@
                 </tr>
             </thead>
             <tbody>
+                <!-- Thymeleaf: Itera sobre la lista de usuarios obtenida del backend -->
                 <tr th:each="u : ${usuarios}">
                     <td style="color:white; font-weight:600;" th:text="${u.nombre}">Nombre</td>
+                    <!-- Thymeleaf: Agrega el nombre del rol como clase CSS (ej: admin, mesero) para pintar el color adecuado de la pildora -->
                     <td><span class="role-pill" th:classappend="${u.rol}" th:text="${#strings.toUpperCase(u.rol)}">ROL</span></td>
                     <td style="color:var(--text-secondary)" th:text="${u.nombreUsuario}">Username</td>
                     <td>
+                        <!-- Thymeleaf: th:classappend condiciona el estilo visual (badge-free o badge-cooking) si el usuario está activo -->
                         <span class="badge" th:classappend="${u.activo ? 'badge-free' : 'badge-cooking'}" 
                               th:text="${u.activo ? 'Activo' : 'Inactivo'}">Estado</span>
                     </td>
@@ -30,10 +61,12 @@
                         <button class="btn btn-secondary btn-sm" 
                                 th:hx-get="'/admin/personal/editar/' + ${u.id}" 
                                 hx-target="body" hx-swap="beforeend">Editar</button>
+                        <!-- Thymeleaf: th:if evalúa si el usuario está activo. Si es así, despliega el botón para desactivarlo (DELETE) -->
                         <button th:if="${u.activo}" class="btn btn-danger btn-sm" 
                                 th:hx-delete="'/admin/personal/' + ${u.id}"
                                 hx-confirm="¿Deseas desactivar este colaborador del sistema?"
                                 hx-target="#admin-content">Desactivar</button>
+                        <!-- Thymeleaf: th:if evalúa si el usuario no está activo. Si es así, despliega el botón para reactivarlo (PUT) -->
                         <button th:if="${!u.activo}" class="btn btn-success btn-sm" 
                                 th:hx-put="'/admin/personal/' + ${u.id} + '/reactivar'"
                                 hx-confirm="¿Deseas reactivar este colaborador en el sistema?"

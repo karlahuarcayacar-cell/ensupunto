@@ -1,9 +1,40 @@
+<!-- 
+====================================================================================================
+PROYECTO ACADÉMICO - EXPLICACIÓN DE TECNOLOGÍAS UTILIZADAS (THYMELEAF + HTMX + HTML5)
+====================================================================================================
+FRAGMENTO / MODAL: autorizacion_modal.html (Autorización de Administrador para Modificación)
+
+1. PROPÓSITO:
+   Este modal solicita credenciales de usuario administrador (usuario y contraseña) cuando se intenta
+   modificar un pedido que ya se encuentra en preparación. Garantiza control de auditoría sobre el consumo.
+
+2. INTEGRACIÓN CON THYMELEAF (SSR):
+   - th:fragment="modal": Define esta vista completa como un fragmento reutilizable llamado "modal", 
+     lo que permite su retorno directo desde el controlador.
+   - th:hx-post: Genera dinámicamente el endpoint del formulario POST enlazando el ID del pedido.
+   - th:if="${error}": Valida condicionalmente la presencia de un error de autenticación en el modelo.
+   - th:text="${error}": Enlaza e inyecta de forma segura el mensaje de error provisto por el servidor.
+
+3. INTEGRACIÓN CON HTMX (Control Asíncrono de Formularios y Modales):
+   - hx-target="#mesero-app": Si la autenticación es correcta, el HTML del editor de pedidos devuelto 
+     por el servidor reemplazará la pantalla del salón en el contenedor principal '#mesero-app'.
+   - hx-on::after-request: Escucha el evento post-petición de HTMX. Si la respuesta contiene el encabezado 
+     'HX-Retarget' con destino a '#mesero-app', significa que la autorización fue exitosa y se destruye el 
+     modal del DOM usando JavaScript (`this.closest('.modal-overlay').remove()`).
+
+4. CONTEXTO DE DATOS:
+   - pedidoId: El identificador del pedido sobre el cual se solicita la edición.
+   - error: Almacena el mensaje explicativo si las credenciales fallan.
+====================================================================================================
+-->
 <div th:fragment="modal" class="modal-overlay" style="backdrop-filter: blur(8px); opacity: 1; pointer-events: auto; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(10, 14, 23, 0.8); z-index: 2000; display: flex; align-items: center; justify-content: center;" id="autorizacion-modal">
     <div class="modal-container" style="background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-lg); width: 90%; max-width: 420px; box-shadow: var(--shadow-lg); display: flex; flex-direction: column;">
         <div class="modal-header" style="padding: 20px 24px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
             <h3 class="modal-title" style="font-size: 1.25rem; color: white;">🔒 Autorización Requerida</h3>
+            <!-- Cierre del modal interactivo a través de JS vanilla localizando y eliminando el nodo overlay superior -->
             <button class="modal-close" onclick="this.closest('.modal-overlay').remove()" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.5rem; width: 32px; height: 32px; border-radius: 50%;">&times;</button>
         </div>
+        <!-- Formulario HTMX: Realiza un POST asíncrono serializando los inputs y actualizando el contenedor '#mesero-app' -->
         <form th:hx-post="'/mesero/pedido/editar/' + ${pedidoId} + '/autorizar'"
               hx-target="#mesero-app"
               hx-on::after-request="if(event.detail.xhr.getResponseHeader('HX-Retarget') === '#mesero-app') this.closest('.modal-overlay').remove()">
@@ -12,12 +43,14 @@
                     Este pedido ya está en preparación. Para modificarlo, ingresa las credenciales de un administrador.
                 </p>
 
+                <!-- Caja de alerta de error condicional cargada por Thymeleaf en tiempo de servidor -->
                 <div th:if="${error}" style="background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.25); color:#f87171; padding:10px; border-radius:8px; margin-bottom:15px; font-size:0.85rem;" th:text="${error}">
                     Error
                 </div>
 
                 <div class="form-group">
                     <label style="color:var(--text-secondary);">Usuario administrador</label>
+                    <!-- El atributo autofocus garantiza que el cursor se posicione directamente en este input al abrir el modal -->
                     <input type="text" name="adminUsername" class="form-control" required autofocus
                            style="width:100%; padding:8px; margin-top:5px; background:var(--bg-tertiary); border:1px solid var(--border-color); color:white; border-radius:4px;">
                 </div>

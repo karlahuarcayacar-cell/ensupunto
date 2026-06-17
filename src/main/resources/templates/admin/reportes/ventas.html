@@ -1,3 +1,26 @@
+<!--
+  TECNOLOGÍA DE VISTA DE FRAGMENTO: Panel Unificado de Reportes y Filtros (ventas.html)
+  
+  Propósito:
+    Este fragmento HTML proporciona los controles y filtros de búsqueda para consultar las ventas del restaurante.
+    Permite filtrar entre las ventas de hoy, las ventas históricas totales, o definir un rango de fechas 
+    personalizado. Gestiona la actualización de la tabla de resultados de manera asíncrona mediante HTMX.
+
+  Tecnologías Utilizadas:
+    - Thymeleaf:
+      * th:fragment="content": Declara este bloque como el fragmento 'content' del módulo de ventas.
+      * th:replace: Realiza la carga inicial e inyección del fragmento `render` ubicado en `tabla_pedidos.html`.
+        Utiliza el paso de parámetros con sintaxis de asignación directa (ej. `pedidos=${pedidos}`).
+    - HTMX:
+      * hx-get="/admin/reportes/ventas/filtrar": Intercepta el envío del formulario de filtros y realiza una petición HTTP GET.
+      * hx-target="#ventas-reporte-resultado": Especifica que los resultados de la consulta deben inyectarse y sobreescribir el contenido del contenedor del reporte.
+      * hx-indicator="#buscar-loading": Especifica qué elemento (el aviso de carga) debe mostrarse durante el tiempo que dure la solicitud AJAX.
+    - JavaScript (nativo):
+      * toggleDateInputs(value): Función que muestra/oculta condicionalmente los campos de fecha "Desde" y "Hasta" y habilita su propiedad 'required' únicamente cuando el usuario elige la opción de "Rango Personalizado".
+
+  Contexto de Datos (Model Attributes):
+    - pedidos, titulo, subtitulo, downloadUrl, previewUrl: Atributos que se reenvían al fragmento secundario `tabla_pedidos` para su renderización inicial.
+-->
 <div th:fragment="content">
     <div class="glass-card" style="margin-bottom: 20px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:12px;">
@@ -7,6 +30,8 @@
             </div>
         </div>
         
+        <!-- HTMX: Envía de forma asíncrona mediante GET a '/admin/reportes/ventas/filtrar'. 
+             Reemplaza los resultados en '#ventas-reporte-resultado' y despliega el loading '#buscar-loading' -->
         <form hx-get="/admin/reportes/ventas/filtrar" 
               hx-target="#ventas-reporte-resultado" 
               hx-indicator="#buscar-loading" 
@@ -14,6 +39,7 @@
             
             <div style="display:flex; flex-direction:column; gap:5px;">
                 <label style="color:var(--text-secondary); font-size:0.8rem; font-weight:600;">Rango de Búsqueda</label>
+                <!-- onchange: Detecta cambios en la selección de búsqueda para alternar visibilidad de las fechas -->
                 <select name="tipo" id="filtro-tipo" class="date-input" style="padding:8px 12px; width:220px;" onchange="toggleDateInputs(this.value)">
                     <option value="hoy" selected>📅 Reporte del Día</option>
                     <option value="historico">📦 Todo lo Vendido (Histórico)</option>
@@ -21,6 +47,7 @@
                 </select>
             </div>
             
+            <!-- Grupo de Fechas: Oculto por defecto. Se muestra al seleccionar "Rango Personalizado" -->
             <div id="grupo-fechas" style="display:none; gap:15px; align-items:center;">
                 <div style="display:flex; flex-direction:column; gap:5px;">
                     <label style="color:var(--text-secondary); font-size:0.8rem; font-weight:600;">Desde</label>
@@ -37,17 +64,24 @@
             </div>
         </form>
         
+        <!-- Indicador de carga HTMX (desplegado durante solicitudes activas en el formulario) -->
         <div id="buscar-loading" class="htmx-indicator" style="color: var(--accent); font-weight: bold; margin-top: 15px; font-size: 0.9rem;">
             ⏳ Procesando consulta de ventas y preparando reporte...
         </div>
     </div>
     
     <div id="ventas-reporte-resultado">
-        <!-- Carga inicial del reporte (por defecto: hoy) -->
+        <!-- Carga inicial del reporte (por defecto: hoy)
+             Thymeleaf: Incluye y parametriza el fragmento 'render' del archivo secundario -->
         <div th:replace="~{admin/reportes/tabla_pedidos :: render(pedidos=${pedidos}, titulo=${titulo}, subtitulo=${subtitulo}, downloadUrl=${downloadUrl}, previewUrl=${previewUrl})}"></div>
     </div>
 
     <script>
+        /**
+         * Muestra u oculta los campos de selección de fecha y los marca como obligatorios
+         * únicamente en el caso de requerir un rango personalizado.
+         * @param {string} value - Opción de rango elegida ('hoy', 'historico', 'personalizado').
+         */
         function toggleDateInputs(value) {
             const dateGroup = document.getElementById('grupo-fechas');
             const desdeInput = document.getElementById('fecha-desde');

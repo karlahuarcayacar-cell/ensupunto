@@ -1,10 +1,34 @@
+<!--
+  TECNOLOGÍA DE VISTA DE MODAL: Formulario de Personal (form_modal.html)
+  
+  Propósito:
+    Este fragmento HTML define una ventana modal para registrar nuevos usuarios colaboradores del sistema 
+    (Meseros, Chefs, Cajeros, Administradores) o editar sus datos de acceso.
+    Permite validar contraseñas de forma inteligente y enviar peticiones asíncronas vía HTMX.
+
+  Tecnologías Utilizadas:
+    - Thymeleaf:
+      * th:fragment="form": Declara este bloque como el fragmento reutilizable 'form' del módulo de personal.
+      * th:text: Muestra condicionalmente el título del modal según estemos registrando o editando a un colaborador.
+      * th:value: Rellena los datos de los campos de texto recuperados de la base de datos a través del modelo 'usuario'.
+      * th:required: Aplica obligatoriedad al campo contraseña si se trata de un nuevo registro (`usuario.id == null`), pero no si se edita.
+      * th:placeholder: Indica mediante un marcador de posición que el campo contraseña es opcional al editar un usuario existente.
+      * th:selected: Marca el rol correspondiente guardado previamente en el backend.
+    - HTMX:
+      * hx-post="/admin/personal/guardar": Serializa y transmite los campos del formulario asíncronamente vía POST.
+      * hx-target="#admin-content": Actualiza la tabla principal del personal inyectando la nueva lista HTML devuelta por el servidor.
+      * hx-on::after-request: Cierra la modal dinámicamente eliminando el overlay si el servidor responde exitosamente.
+-->
 <div id="user-modal" th:fragment="form" class="modal-overlay" style="backdrop-filter: blur(8px); opacity: 1; pointer-events: auto; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(10, 14, 23, 0.8); z-index: 2000; display: flex; align-items: center; justify-content: center;">
     <div class="modal-container" style="background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-lg); width: 90%; max-width: 450px; box-shadow: var(--shadow-lg); display: flex; flex-direction: column;">
         <div class="modal-header" style="padding: 20px 24px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
+            <!-- Thymeleaf: Modifica dinámicamente la cabecera según el contexto de creación o edición -->
             <h3 class="modal-title" style="font-size: 1.25rem; color: white;" th:text="${usuario.id == null ? '👥 Nuevo Colaborador' : '✏️ Editar Personal'}">Título</h3>
             <button class="modal-close" onclick="this.closest('.modal-overlay').remove()" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.5rem; width: 32px; height: 32px; border-radius: 50%;">&times;</button>
         </div>
+        <!-- HTMX: Envío asíncrono POST del formulario del usuario, actualizando la tabla principal del dashboard -->
         <form hx-post="/admin/personal/guardar" hx-target="#admin-content" hx-on::after-request="if(event.detail.successful) this.closest('.modal-overlay').remove()">
+            <!-- ID oculto del usuario necesario para que el ORM (Hibernate) distinga entre INSERT o UPDATE -->
             <input type="hidden" name="id" th:value="${usuario.id}">
             <div class="modal-body" style="padding: 24px; color: var(--text-secondary); max-height: 70vh; overflow-y: auto;">
                 <div class="form-group" style="margin-bottom:15px;">
@@ -17,6 +41,8 @@
                 </div>
                 <div class="form-group" style="margin-bottom:15px;">
                     <label style="display:block; margin-bottom:5px;">Contraseña</label>
+                    <!-- Thymeleaf: th:required obliga a colocar contraseña en usuarios nuevos. 
+                         th:placeholder advierte al usuario que puede dejarla vacía si ya está editando su perfil -->
                     <input type="password" name="contrasena" class="form-control" 
                            th:required="${usuario.id == null}" 
                            th:placeholder="${usuario.id != null ? 'Dejar en blanco para no cambiar' : ''}" 
@@ -24,6 +50,7 @@
                 </div>
                 <div class="form-group" style="margin-bottom:15px;">
                     <label style="display:block; margin-bottom:5px;">Rol</label>
+                    <!-- Menú para roles de sistema, vinculando y pre-seleccionando la opción correcta -->
                     <select name="rol" class="form-control" style="width:100%;">
                         <option value="mesero" th:selected="${usuario.rol == 'mesero'}">Mesero</option>
                         <option value="chef" th:selected="${usuario.rol == 'chef'}">Chef</option>

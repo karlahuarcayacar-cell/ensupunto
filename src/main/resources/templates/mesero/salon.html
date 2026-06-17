@@ -1,8 +1,45 @@
+<!-- 
+====================================================================================================
+PROYECTO ACADÉMICO - EXPLICACIÓN DE TECNOLOGÍAS UTILIZADAS (THYMELEAF + HTMX + HTML5)
+====================================================================================================
+VISTA: salon.html (Salón de Mesas para Mesero)
+
+1. PROPÓSITO:
+   Esta vista representa el panel principal del mesero, donde se visualiza el salón con el estado de
+   todas las mesas en tiempo real (libre, ocupada, etc.). Permite iniciar nuevos pedidos o ver
+   detalles de pedidos en curso.
+
+2. INTEGRACIÓN CON THYMELEAF (Procesamiento en Servidor / SSR):
+   - th:replace: Realiza una inclusión modular de fragmentos reutilizables (cabecera, barra de navegación,
+     y scripts comunes) para mantener el principio DRY (Don't Repeat Yourself).
+   - th:fragment: Define secciones reutilizables ("salon-view" y "lista-mesas") que pueden ser renderizadas
+     por Spring Boot de forma independiente para peticiones parciales HTMX.
+   - th:each: Estructura de control iterativa sobre la colección '${mesasStatus}' provista por el controlador.
+   - th:classappend: Concatenación dinámica de clases CSS según el estado de la mesa (ej: 'state-libre').
+   - th:text: Interpolación segura de textos que previene vulnerabilidades XSS.
+   - th:hx-get: Genera atributos dinámicos que cambian la ruta de HTMX según el estado lógico de la entidad.
+   - th:inline="javascript": Permite la inyección directa de variables de Spring Boot en bloques de JS.
+
+3. INTEGRACIÓN CON HTMX (Interactividad Asíncrona sin Recargar la Página):
+   - hx-get: Solicita de forma asíncrona un fragmento HTML al endpoint indicado.
+   - hx-trigger="every 10s, load": Disparador doble. Carga el fragmento al iniciar la página y ejecuta
+     un sondeo periódico (polling) cada 10 segundos para actualizar la vista de forma transparente.
+   - hx-swap: Modifica el comportamiento de inserción del HTML recibido. 'innerHTML' reemplaza los
+     hijos del elemento objetivo; 'beforeend' lo inserta al final del elemento (útil para inyectar modales en el body).
+   - hx-target: Define qué elemento del DOM recibirá la respuesta HTML del servidor.
+
+4. CONTEXTO DE DATOS (Atributos del Modelo de Spring MVC):
+   - mesasStatus: Colección de objetos DTO conteniendo el estado lógico de cada mesa (id, nombre, estado, total, etc.).
+   - errorModal: Variable opcional que indica un mensaje de error a desplegarse en una ventana modal en caso de fallos.
+====================================================================================================
+-->
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
+<!-- th:replace carga dinámicamente el fragmento 'head' desde 'fragments/header.html' pasando el título como parámetro -->
 <head th:replace="~{fragments/header :: head('Mesero Dashboard')}"></head>
 <body>
     <style>
+        /* Estilos CSS específicos de la vista para botones de detalle y filas de datos */
         .btn-details { background-color: var(--bg-tertiary); border: 1px solid var(--border-color); color: white; }
         .btn-details:hover { background-color: var(--border-color); }
         .table-data-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
@@ -11,23 +48,33 @@
     </style>
 
     <div class="app-container">
+        <!-- th:replace carga la barra de navegación superior (navbar) común a todo el dashboard -->
         <header th:replace="~{fragments/header :: navbar}"></header>
         
+        <!-- Contenedor dinámico principal. HTMX reemplazará su contenido asíncronamente según el flujo de la aplicación -->
         <main class="main-content" id="mesero-app">
+            <!-- th:fragment define un fragmento independiente denominado 'salon-view' para actualizaciones parciales -->
             <div th:fragment="salon-view" id="view-mesas" class="fade-in">
                 <div style="display: flex; flex-direction: column; margin-bottom: 25px;">  
                     <h1 style="font-size: 1.8rem; color: white;">Salón de Mesas</h1>
                     <p style="color: var(--text-secondary); font-size: 0.9rem;">Gestión de consumo y pedidos en tiempo real.</p>
                 </div>
                 
+                <!-- 
+                   HTMX Polling: Cada 10 segundos o al cargar, realiza un GET a la URL de fragmentos de mesas.
+                   Intercambia el 'innerHTML' del grid con el nuevo HTML procesado por Thymeleaf en el servidor.
+                -->
                 <div class="tables-grid" id="tables-grid" 
                      hx-get="/mesero/fragment/mesas" 
                      hx-trigger="every 10s, load" 
                      hx-swap="innerHTML">
+                    <!-- En el renderizado inicial de la página por el servidor, reemplaza con el fragmento de la lista de mesas -->
                     <div th:replace="~{mesero/salon :: lista-mesas}"></div>
                 </div>
 
+                <!-- Script inline controlado por Thymeleaf. Se ejecuta solo si existe un error en el modelo y levanta un modal personalizado -->
                 <script th:if="${errorModal}" th:inline="javascript">
+                    /* Thymeleaf inyecta el valor de la variable errorModal de forma segura en formato JS */
                     showCustomModal(
                         "Acción Denegada", 
                         "<p style='color:white;'>" + [[${errorModal}]] + "</p>", 
@@ -38,28 +85,43 @@
         </main>
     </div>
 
+    <!-- Carga de scripts comunes necesarios para la lógica global de la aplicación (UI, Modales, etc.) -->
     <th:block th:replace="~{fragments/scripts :: commonScripts}"></th:block>
 
-    <!-- Fragmento de Mesas -->
+    <!-- 
+       Fragmento reutilizable: lista-mesas.
+       th:remove="tag" asegura que este div contenedor no se dibuje en el DOM final, solo sus hijos.
+    -->
     <div th:fragment="lista-mesas" th:remove="tag">
+        <!-- Bucle iterativo th:each para construir la tarjeta de cada mesa según su estado actual -->
         <div th:each="m : ${mesasStatus}" 
              class="glass-card table-card" 
              th:classappend="'state-' + ${m.estado}"
+             
+             /* HTMX Dinámico: Si la mesa está libre, al hacer click inicia un nuevo pedido; si no, abre el detalle del pedido activo */
              th:hx-get="${m.estado == 'libre' ? '/mesero/pedido/nuevo/' + m.id : '/mesero/pedido/detalle/' + m.pedidoId}"
+             
+             /* HTMX targets & swaps dinámicos: 
+                - Las mesas libres cargan el editor de pedidos en la vista principal '#mesero-app' reemplazando el HTML (hx-swap='innerHTML').
+                - Las mesas ocupadas abren un modal inyectándolo al final de la etiqueta 'body' (hx-swap='beforeend').
+             */
              th:attr="hx-target=${m.estado == 'libre' ? '#mesero-app' : 'body'}, hx-swap=${m.estado == 'libre' ? 'innerHTML' : 'beforeend'}"
              style="cursor:pointer;">
             
             <div class="table-header">
+                <!-- Interpolación de texto para el nombre de la mesa y sus badges de estado en base a variables de Spring -->
                 <span class="table-number" th:text="${m.nombre}">Mesa</span>
                 <span class="badge" th:classappend="${'badge-' + m.estadoSuffix}" th:text="${m.estadoLabel}">Estado</span>
             </div>
             
             <div class="table-body-info">
+                <!-- Renderizado condicional mediante th:if para renderizar información específica según el estado de la mesa -->
                 <div th:if="${m.estado == 'libre'}" th:remove="tag">
                     <p style="font-size:0.8rem; color:var(--text-muted); min-height:60px; display:flex; align-items:center;">Mesa disponible para nuevos clientes.</p>
                 </div>
                 <div th:if="${m.estado != 'libre'}" th:remove="tag">
                     <div class="table-data-row">
+                        <!-- Formateo de números de Thymeleaf (#numbers.formatDecimal) para dar formato de moneda S/ 0.00 -->
                         <span class="table-total" th:text="'S/ ' + ${#numbers.formatDecimal(m.total, 1, 2)}">S/ 0.00</span>
                         <span class="table-items-count" th:text="${m.cantidadPlatos} + ' platos'">0 platos</span>
                     </div>
@@ -71,6 +133,7 @@
             </div>
             
             <div class="table-footer-actions">
+                <!-- Botones informativos condicionales -->
                 <button th:if="${m.estado == 'libre'}" class="btn btn-primary btn-sm" style="width:100%">Nueva Orden</button>
                 <button th:if="${m.estado != 'libre'}" class="btn btn-details btn-sm" style="width:100%">Ver Detalles</button>
             </div>

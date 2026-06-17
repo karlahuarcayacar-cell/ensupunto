@@ -1,13 +1,38 @@
+<!-- 
+  =============================================================================
+  PROYECTO ACADÉMICO - EN SU PUNTO (Contenedor de Modal Global Reutilizable)
+  PROPÓSITO:
+  - Estructura base para ventanas modales genéricas en el sistema. Proporciona la
+    maquetación visual y contenedores con IDs específicos (`#global-modal-title`, 
+    `#global-modal-body`, `#global-modal-footer`) para ser manipulados dinámicamente 
+    mediante scripts JavaScript globales (como `openGlobalModal` o `closeGlobalModal`).
+  
+  TECNOLOGÍAS EXPLICADAS:
+  1. Thymeleaf:
+     - th:block: Elemento sintáctico ficticio/invisible de Thymeleaf. Permite agrupar 
+       y delimitar un fragmento (`th:fragment="globalModal"`) sin renderizar ninguna 
+       etiqueta contenedora adicional en el HTML enviado al cliente, manteniendo el DOM limpio.
+  2. JavaScript / CSS Estándar:
+     - Close button: Ejecuta la función global `closeGlobalModal()` para ocultar la ventana 
+       con transiciones suaves de opacidad y escala configuradas vía CSS en `style.css`.
+  3. Contexto de Datos:
+     - Plantilla estática. No requiere atributos iniciales en el modelo de Spring MVC, 
+       ya que sus datos son inyectados dinámicamente por la interacción del cliente.
+  =============================================================================
+-->
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <body>
+    <!-- th:block: Contenedor lógico invisible que define el fragmento reusable sin añadir capas al DOM real -->
     <th:block th:fragment="globalModal">
         <div id="global-modal-overlay" class="modal-overlay" style="backdrop-filter: blur(8px); opacity: 0; pointer-events: none; transition: opacity 0.3s ease; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(10, 14, 23, 0.8); z-index: 2000; display: flex; align-items: center; justify-content: center;">
             <div class="modal-container" style="background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-lg); width: 90%; max-width: 450px; box-shadow: var(--shadow-lg); transform: scale(0.95); transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); display: flex; flex-direction: column;">
                 <div class="modal-header" style="padding: 20px 24px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
+                    <!-- ID 'global-modal-title': Modificado dinámicamente por JS al abrir el modal -->
                     <h3 class="modal-title" id="global-modal-title" style="font-size: 1.25rem; color: white;">Título</h3>
                     <button class="modal-close" onclick="closeGlobalModal()" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.5rem; width: 32px; height: 32px; border-radius: 50%;">&times;</button>
                 </div>
+                <!-- ID 'global-modal-body': Contenedor destino de la inyección de contenido HTML -->
                 <div class="modal-body" id="global-modal-body" style="padding: 24px; color: var(--text-secondary); max-height: 70vh; overflow-y: auto;">
                     Contenido
                 </div>

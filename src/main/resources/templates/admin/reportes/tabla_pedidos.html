@@ -1,13 +1,50 @@
+<!--
+  TECNOLOGÍA DE VISTA DE FRAGMENTO: Tabla Parametrizada de Pedidos y Paginación (tabla_pedidos.html)
+  
+  Propósito:
+    Este fragmento reutilizable dibuja una tabla detallada con los pedidos que coinciden con los filtros aplicados.
+    Incluye los controles de paginación asíncrona mediante HTMX y las funciones JS para previsualizar,
+    imprimir y descargar reportes de ventas en PDF.
+
+  Tecnologías Utilizadas:
+    - Thymeleaf:
+      * th:fragment="render(pedidos, ...)": Declara un fragmento parametrizado (recibe parámetros como variables directas del llamador).
+      * th:each con variable de iteración e 'iter' (th:each="d, iter : ${p.detalles}"): Itera en los detalles de un pedido y usa el objeto de estado iterativo (`iter.last`) para decidir si colocar o no una coma de separación.
+      * th:attr: Vincula atributos HTML como onclick con expresiones calculadas en el servidor (ej: `onclick=|previsualizarReporteVentas('${previewUrl}')|`).
+      * th:href: Enlace directo al endpoint de descarga del archivo PDF.
+      * th:text con formateadores utilitarios (#temporals.format, #numbers.formatCurrency) para estilización y presentación final.
+    - HTMX:
+      * th:hx-get: Genera URLs parametrizadas dinámicas para la navegación de páginas (Anterior / Siguiente).
+      * hx-target="#ventas-reporte-resultado": Especifica que los resultados de la paginación deben inyectarse y sobreescribir únicamente el contenedor de la tabla de ventas, evitando recargas molestas de los filtros.
+      * hx-indicator="#buscar-loading": Indica qué elemento visual (spinner o texto de carga) debe mostrarse mientras se completa la paginación.
+    - JavaScript (nativo):
+      * Visualización e Impresión de PDF: Utiliza un elemento `<iframe>` para renderizar el flujo PDF del endpoint de manera embebida y permite mandar la orden de impresión mediante JS directo (`iframe.contentWindow.print()`).
+
+  Contexto de Datos (Parámetros del Fragmento):
+    - pedidos: Lista paginada de pedidos correspondiente a la página solicitada.
+    - titulo: Título descriptivo para la cabecera de la tabla (ej. "Reporte de Hoy").
+    - subtitulo: Detalles adicionales de la consulta.
+    - downloadUrl: URL construida en el backend para descargar el PDF.
+    - previewUrl: URL para previsualizar el PDF en la misma interfaz.
+    - currentPage: Número de la página actual (0-indexed).
+    - totalPages: Total de páginas disponibles según la consulta de paginación.
+    - totalElements: Registros totales encontrados en la base de datos.
+    - totalVendido: Sumatoria total acumulada de las ventas para la consulta dada.
+    - tipo, desde, hasta: Variables de búsqueda que se arrastran para preservar los filtros en la navegación entre páginas.
+-->
 <div th:fragment="render(pedidos, titulo, subtitulo, downloadUrl, previewUrl)">
     <div class="glass-card">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
             <div>
+                <!-- Thymeleaf: Muestra dinámicamente el título y subtítulo enviados por parámetro -->
                 <h3 style="color:white; font-size:1.1rem;" th:text="${titulo}">Título</h3>
                 <p style="color:var(--text-secondary); font-size:0.85rem;" th:text="${subtitulo}">Subtítulo</p>
             </div>
             <div style="display:flex; gap:10px;">
+                <!-- Thymeleaf: th:attr inyecta dinámicamente la URL en el manejador onclick de javascript -->
                 <button class="btn btn-secondary" th:attr="onclick=|previsualizarReporteVentas('${previewUrl}')|">👁️ Vista Previa</button>
                 <button class="btn btn-secondary" onclick="imprimirReporteVentas()">🖨️ Imprimir</button>
+                <!-- Thymeleaf: th:href genera el enlace directo para la descarga del PDF del reporte de ventas -->
                 <a th:href="${downloadUrl}" target="_blank" class="btn btn-primary">⬇️ Descargar PDF</a>
             </div>
         </div>
@@ -23,12 +60,17 @@
                 </tr>
             </thead>
             <tbody>
+                <!-- Thymeleaf: Itera en la colección parametrizada de pedidos -->
                 <tr th:each="p : ${pedidos}">
                     <td style="color:white;" th:text="${p.mesa.nombre}">Mesa</td>
                     <td style="color:var(--text-secondary);" th:text="${p.mesero != null ? p.mesero.nombre : '-'}">Mesero</td>
                     <td style="color:var(--text-secondary); max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                        <!-- Thymeleaf: Doble iteración (Nested Loop) para listar los detalles del pedido.
+                             - 'iter' es una variable implícita de estado.
+                             - 'iter.last' determina si es el último elemento para omitir la coma de separación -->
                         <span th:each="d, iter : ${p.detalles}" th:text="${d.cantidad} + 'x ' + ${d.plato.nombre} + (iter.last ? '' : ', ')"></span>
                     </td>
+                    <!-- Thymeleaf: th:classappend añade el método de pago como clase CSS para estilar según efectivo, tarjeta o yape -->
                     <td><span class="role-pill" th:classappend="${p.metodoPago}" th:text="${#strings.toUpperCase(p.metodoPago)}">EFECTIVO</span></td>
                     <td style="color:var(--text-secondary);" th:text="${#temporals.format(p.fechaPago, 'dd/MM/yyyy HH:mm')}">Fecha</td>
                     <td style="color:var(--accent); font-weight:700;" th:text="${#numbers.formatCurrency(p.total)}">S/ 0.00</td>
@@ -44,7 +86,12 @@
             </div>
             
             <!-- Controles de Paginación -->
+            <!-- Thymeleaf: Muestra la sección solo si el número total de páginas es mayor a 1 -->
             <div th:if="${totalPages > 1}" style="display:flex; align-items:center; gap:12px;">
+                <!-- HTMX + Thymeleaf:
+                     - th:hx-get construye dinámicamente la URL para traer la página previa preservando los parámetros de filtros.
+                     - hx-target indica que solo se reemplazará la sección de resultados.
+                     - hx-indicator hace visible el mensaje de carga durante la llamada AJAX. -->
                 <button class="btn btn-secondary btn-sm"
                         th:if="${currentPage > 0}"
                         th:hx-get="'/admin/reportes/ventas/filtrar?tipo=' + ${tipo} + '&desde=' + ${desde ?: ''} + '&hasta=' + ${hasta ?: ''} + '&page=' + ${currentPage - 1}"
@@ -72,6 +119,7 @@
                 <h3 style="color:white; font-size:1rem; margin:0;">Vista Previa del Reporte</h3>
                 <div id="preview-loading" style="color:var(--text-secondary); font-size:0.8rem;">Cargando...</div>
             </div>
+            <!-- Iframe para previsualizar el PDF dinámicamente antes de imprimir o descargar -->
             <iframe id="preview-iframe" style="width:100%; height:600px; border:none; border-radius:var(--radius-md); background:white;"
                     onload="document.getElementById('preview-loading').style.display='none';"></iframe>
         </div>
@@ -79,6 +127,10 @@
 
     <!-- Script de vista previa incorporado dentro del fragmento para ejecución de HTMX -->
     <script>
+    /**
+     * Muestra el contenedor de previsualización y apunta el iframe a la URL del reporte en formato PDF.
+     * @param {string} url - Ruta de acceso al endpoint que expone el flujo binario de PDF.
+     */
     function previsualizarReporteVentas(url) {
         const container = document.getElementById('preview-container');
         const iframe = document.getElementById('preview-iframe');
@@ -90,6 +142,9 @@
         container.scrollIntoView({ behavior: 'smooth' });
     }
 
+    /**
+     * Accede al contexto del visualizador de PDF incrustado en el iframe y dispara la función print.
+     */
     function imprimirReporteVentas() {
         const iframe = document.getElementById('preview-iframe');
         if (!iframe || !iframe.src) {

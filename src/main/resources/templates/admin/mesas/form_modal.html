@@ -1,10 +1,33 @@
+<!--
+  TECNOLOGÍA DE VISTA DE MODAL: Formulario de Mesa (form_modal.html)
+  
+  Propósito:
+    Este fragmento HTML define una ventana modal superpuesta (overlay) para crear o editar los datos de una mesa física.
+    Utiliza HTMX para enviar el formulario de manera asíncrona y cerrar el modal automáticamente si la petición tiene éxito.
+
+  Tecnologías Utilizadas:
+    - Thymeleaf:
+      * th:fragment="form": Declara este bloque como un fragmento llamado 'form', permitiendo que sea invocado y retornado de forma independiente por el controlador.
+      * th:text con operador ternario (mesa.id == null ? ... : ...): Muestra dinámicamente un título alternativo según la mesa sea nueva o ya exista.
+      * th:value: Vincula los valores del modelo ('mesa') al formulario (como el campo oculto 'id' y el campo de texto 'nombre').
+      * th:selected: Habilita el atributo 'selected' en la opción del menú desplegable que coincide con el estado actual de la mesa.
+    - HTMX:
+      * hx-post="/admin/mesas/guardar": Intercepta el envío (submit) del formulario y realiza una petición HTTP POST asíncrona.
+      * hx-target="#admin-content": Especifica que la respuesta HTML que devuelva el servidor (la lista de mesas actualizada) se inyectará en la sección principal del dashboard.
+      * hx-on::after-request: Escucha el evento del ciclo de vida de HTMX 'after-request'. Si la petición fue exitosa (event.detail.successful), ejecuta una línea de JavaScript para remover el modal del DOM (`this.closest('.modal-overlay').remove()`).
+-->
 <div id="mesa-modal" th:fragment="form" class="modal-overlay" style="backdrop-filter: blur(8px); opacity: 1; pointer-events: auto; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(10, 14, 23, 0.8); z-index: 2000; display: flex; align-items: center; justify-content: center;">
     <div class="modal-container" style="background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-lg); width: 90%; max-width: 450px; box-shadow: var(--shadow-lg); display: flex; flex-direction: column;">
         <div class="modal-header" style="padding: 20px 24px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
+            <!-- Thymeleaf: Determina dinámicamente si el flujo es de creación (id nulo) o de edición -->
             <h3 class="modal-title" style="font-size: 1.25rem; color: white;" th:text="${mesa.id == null ? '🪑 Nueva Mesa' : '✏️ Editar Mesa'}">Título</h3>
+            <!-- JavaScript: Acción nativa de cierre del modal eliminando el elemento contenedor overlay del DOM -->
             <button class="modal-close" onclick="this.closest('.modal-overlay').remove()" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.5rem; width: 32px; height: 32px; border-radius: 50%">&times;</button>
         </div>
+        <!-- HTMX: Envía por POST a '/admin/mesas/guardar' e inyecta la lista resultante en '#admin-content'.
+             El hook hx-on::after-request destruye el modal si la petición es satisfactoria. -->
         <form hx-post="/admin/mesas/guardar" hx-target="#admin-content" hx-on::after-request="if(event.detail.successful) this.closest('.modal-overlay').remove()">
+            <!-- Campo oculto conteniendo el ID de la entidad, necesario para mapear actualizaciones en Spring Boot -->
             <input type="hidden" name="id" th:value="${mesa.id}">
             <div class="modal-body" style="padding: 24px; color: var(--text-secondary); max-height: 70vh; overflow-y: auto;">
                 <div class="form-group" style="margin-bottom:15px;">
@@ -13,6 +36,7 @@
                 </div>
                 <div class="form-group" style="margin-bottom:15px;">
                     <label style="display:block; margin-bottom:5px;">Estado de la Mesa</label>
+                    <!-- Menú desplegable para los estados de la mesa. th:selected comprueba el estado actual en el backend -->
                     <select name="estado" class="form-control" style="width:100%;">
                         <option value="libre" th:selected="${mesa.estado == 'libre'}">Libre</option>
                         <option value="esperando_comida" th:selected="${mesa.estado == 'esperando_comida'}">Esperando Comida / En Cola</option>

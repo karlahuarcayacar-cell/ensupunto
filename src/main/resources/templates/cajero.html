@@ -1,8 +1,34 @@
+<!-- 
+  =============================================================================
+  PROYECTO ACADÉMICO - EN SU PUNTO (Dashboard del Cajero)
+  PROPÓSITO:
+  - Vista principal para el rol de Cajero. Permite visualizar el estado en tiempo
+    real de todas las mesas del restaurante y seleccionar una para procesar su
+    pago (cuenta de consumo).
+  
+  TECNOLOGÍAS EXPLICADAS:
+  1. Thymeleaf:
+     - th:replace: Inclusión de fragmentos reutilizables de encabezado (head) y
+       barra de navegación (navbar), permitiendo una estructura modular DRY.
+     - th:each: Bucle iterador sobre la lista '${mesas}' para poblar dinámicamente la cuadrícula.
+     - th:classappend: Adición condicional de clases CSS según el estado de la mesa.
+     - th:text: Enlace dinámico de texto para el nombre y estado de la mesa.
+     - th:if: Renderizado condicional de elementos (botón de cobrar visible solo si no está libre).
+  2. HTMX:
+     - th:hx-get: Configura de forma dinámica (vía Thymeleaf) una solicitud AJAX GET.
+     - hx-target: Apunta al elemento DOM '#cashier-right-panel' para inyectar allí
+       el HTML retornado por el controlador sin recargar toda la página.
+  3. Contexto de Datos:
+     - ${mesas}: Lista de objetos de tipo Mesa (id, nombre, estado).
+  =============================================================================
+-->
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
+<!-- Thymeleaf: Reemplazo dinámico del fragmento 'head' ubicado en 'fragments/header.html' pasando el título como parámetro -->
 <head th:replace="~{fragments/header :: head('Cajero Dashboard')}"></head>
 <body>
     <div class="app-container">
+        <!-- Thymeleaf: Reemplazo dinámico para incluir la barra de navegación superior -->
         <header th:replace="~{fragments/header :: navbar}"></header>
         
         <main class="main-content">
@@ -15,7 +41,12 @@
             
             <div class="cashier-layout">
                 <div class="cashier-tables-view">
+                    <!-- Cuadrícula dinámica de las mesas del restaurante -->
                     <div class="tables-grid">
+                        <!-- Thymeleaf th:each: Itera sobre la colección de mesas enviada por el controlador -->
+                        <!-- Thymeleaf th:classappend: Agrega una clase CSS de estado para el estilo visual (ej. state-libre, state-comiendo) -->
+                        <!-- HTMX th:hx-get: Genera una petición AJAX GET dinámica basada en el ID de la mesa actual -->
+                        <!-- HTMX hx-target: Especifica que el panel lateral derecho recibirá la respuesta HTML -->
                         <div th:each="mesa : ${mesas}" 
                              class="glass-card table-card" 
                              th:classappend="'state-' + ${mesa.estado}" 
@@ -23,17 +54,21 @@
                              hx-target="#cashier-right-panel"
                              style="cursor:pointer;">
                             <div class="table-header">
+                                <!-- Thymeleaf th:text: Muestra el nombre de la mesa -->
                                 <span class="table-number" th:text="${mesa.nombre}">Mesa</span>
+                                <!-- Thymeleaf th:classappend / th:text: Muestra un badge con color y etiqueta adaptados al estado de la mesa -->
                                 <span class="badge" th:classappend="${mesa.estado == 'libre' ? 'badge-free' : (mesa.estado == 'esperando_comida' ? 'badge-waiting' : (mesa.estado == 'comiendo' ? 'badge-eating' : 'badge-cooking'))}" 
                                       th:text="${mesa.estado == 'libre' ? 'Libre' : mesa.estado}">Estado</span>
                             </div>
                             <div class="table-footer-actions">
+                                <!-- Thymeleaf th:if: Solo muestra el botón si la mesa no está libre (requiere cobro de cuenta) -->
                                 <button th:if="${mesa.estado != 'libre'}" class="btn btn-primary btn-sm">Cobrar Cuenta</button>
                             </div>
                         </div>
                     </div>
                 </div>
 
+                <!-- Panel lateral donde se carga dinámicamente la información de cobro vía HTMX -->
                 <div id="cashier-right-panel" style="width: 400px; height: 100%; display: flex; flex-direction: column;">
                     <div class="glass-card cashier-bill-panel" style="justify-content: center; align-items: center; color: var(--text-secondary); height: 100%;">
                         <p>Selecciona una mesa para ver el detalle</p>
@@ -43,6 +78,7 @@
         </main>
     </div>
 
+    <!-- Thymeleaf: Importación del bloque de scripts comunes para el layout -->
     <th:block th:replace="~{fragments/scripts :: commonScripts}"></th:block>
 </body>
 </html>

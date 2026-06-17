@@ -1,3 +1,22 @@
+<!--
+  TECNOLOGÍA DE VISTA DE FRAGMENTO: Bitácora de Auditoría de Pedidos (auditoria.html)
+  
+  Propósito:
+    Este fragmento HTML visualiza el registro de auditoría de pedidos.
+    Muestra información detallada sobre las anulaciones o modificaciones de platos que han sido autorizadas 
+    por algún administrador, garantizando la trazabilidad y la seguridad en el restaurante.
+
+  Tecnologías Utilizadas:
+    - Thymeleaf:
+      * th:fragment="content": Define este bloque como un fragmento modular e independiente llamado 'content'.
+      * th:if="${#lists.isEmpty(modificaciones)}": Condicional que comprueba si la lista de modificaciones está vacía para desplegar una fila con un mensaje amigable.
+      * th:each="m : ${modificaciones}": Itera sobre cada registro de auditoría.
+      * th:text: Enlaza de manera segura los datos del modelo, como el código del pedido (`m.pedido.id`), nombre de la mesa (`m.pedido.mesa.nombre`), nombre del administrador, y el texto detallado de la modificación.
+      * Formateador Temporal (#temporals.format(m.fechaCreacion, 'dd/MM/yyyy HH:mm:ss')): Utilitario de Thymeleaf para formatear objetos de tipo LocalDateTime/Instant a un formato legible por el usuario.
+
+  Contexto de Datos (Model Attributes):
+    - modificaciones: Colección de registros de auditoría (ModificacionPedido) guardados en la base de datos.
+-->
 <div th:fragment="content" class="glass-card">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
         <div>
@@ -16,14 +35,17 @@
             </tr>
         </thead>
         <tbody>
+            <!-- Thymeleaf: th:if comprueba si la bitácora no tiene registros mediante el utilitario de colecciones #lists -->
             <tr th:if="${#lists.isEmpty(modificaciones)}">
                 <td colspan="5" style="text-align:center; color:var(--text-secondary); padding:20px;">No se han registrado modificaciones o anulaciones.</td>
             </tr>
+            <!-- Thymeleaf: Recorre y dibuja cada entrada de auditoría -->
             <tr th:each="m : ${modificaciones}">
                 <td style="color:white; font-weight:700;" th:text="'#' + ${m.pedido.id}">#ID</td>
                 <td style="color:white;" th:text="${m.pedido.mesa.nombre}">Mesa 1</td>
                 <td><span class="role-pill admin" th:text="${m.administrador.nombre}">Admin</span></td>
                 <td style="color:var(--text-secondary); max-width:400px; word-break:break-word;" th:text="${m.detalle}">Detalle</td>
+                <!-- Thymeleaf: Utilitario para el formateo de fecha y hora LocalDateTime a patrón estándar latinoamericano (dd/MM/yyyy HH:mm:ss) -->
                 <td style="color:var(--text-secondary);" th:text="${#temporals.format(m.fechaCreacion, 'dd/MM/yyyy HH:mm:ss')}">Fecha</td>
             </tr>
         </tbody>

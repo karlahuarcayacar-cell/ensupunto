@@ -1,23 +1,65 @@
+<!-- 
+====================================================================================================
+PROYECTO ACADÉMICO - EXPLICACIÓN DE TECNOLOGÍAS UTILIZADAS (THYMELEAF + HTMX + HTML5)
+====================================================================================================
+FRAGMENTO: carrito.html (Detalle actual del Pedido / Carrito de Compras)
+
+1. PROPÓSITO:
+   Este fragmento visualiza los platos seleccionados actualmente por el mesero en la orden activa.
+   Permite ajustar cantidades, agregar anotaciones específicas de preparación por plato,
+   y despachar el pedido final a la cola de la cocina.
+
+2. INTEGRACIÓN CON THYMELEAF (SSR):
+   - th:fragment="detalle": Define el fragmento "detalle" que se actualiza reactivamente por HTMX.
+   - th:remove="tag": Elimina la etiqueta envolvente contenedora en el renderizado final para no alterar
+     la estructura CSS/HTML del layout padre.
+   - #lists.isEmpty(carrito.items): Utility class de Thymeleaf para evaluar condicionalmente si la lista 
+     de ítems está vacía.
+   - th:each="item : ${carrito.items}": Bucle de iteración sobre cada ítem en el carrito de compras.
+   - th:text: Interpolación del nombre del plato, la cantidad, las notas y el total formateado.
+   - #numbers.formatDecimal(...): Utility class de Thymeleaf para formatear decimales a formato de moneda 
+     con un entero y dos posiciones decimales.
+   - th:disabled: Deshabilita dinámicamente el botón "Enviar a Cocina" si el carrito está vacío.
+
+3. INTEGRACIÓN CON HTMX (Actualizaciones Parciales de Fragmentos):
+   - hx-post: Envía peticiones POST de forma asíncrona a los controladores de incremento ('/agregar/{id}'), 
+     decremento ('/quitar/{id}') y guardado final ('/finalizar').
+   - hx-target="#order-summary-panel": Direcciona la respuesta HTML devuelta por el servidor (este mismo fragmento 
+     de carrito recalculado) de vuelta a la sección lateral.
+   - hx-get (para nota): Carga el formulario modal para añadir una nota al plato inyectándolo al body (`hx-swap="beforeend"`).
+
+4. CONTEXTO DE DATOS:
+   - carrito: Objeto de sesión o modelo (CarritoSessionDTO) que contiene la lista de ítems, el subtotal,
+     el IGV y el total calculado.
+====================================================================================================
+-->
 <div th:fragment="detalle" th:remove="tag">
     <h3 style="font-size: 1.1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">Detalle del Pedido</h3>
     
     <div class="summary-items-list" id="order-summary-items">
+        <!-- Renderizado condicional en caso de que no haya elementos en el carrito -->
         <div th:if="${#lists.isEmpty(carrito.items)}" style="text-align:center; padding:20px; color:gray;">Pedido vacío</div>
         
+        <!-- Bucle iterativo de Thymeleaf para renderizar cada línea de plato añadido -->
         <div th:each="item : ${carrito.items}" class="summary-item fade-in">
             <div class="summary-item-header">
                 <span th:text="${item.nombre}">Plato</span>
+                <!-- Cálculo aritmético dinámico en servidor y formateado decimal con dos dígitos de precisión -->
                 <span th:text="'S/ ' + ${#numbers.formatDecimal(item.precio * item.cantidad, 1, 2)}">S/ 0.00</span>
             </div>
             <div class="summary-item-controls" style="margin-top:5px;">
                 <div class="qty-controls">
+                    <!-- Botón HTMX para restar cantidad. Tras la respuesta del servidor, actualiza el panel #order-summary-panel -->
                     <button class="qty-btn" th:hx-post="'/mesero/pedido/carrito/quitar/' + ${item.platoId}" hx-target="#order-summary-panel">-</button>
                     <span class="qty-val" th:text="${item.cantidad}">1</span>
+                    <!-- Botón HTMX para sumar cantidad. Tras la respuesta del servidor, actualiza el panel #order-summary-panel -->
                     <button class="qty-btn" th:hx-post="'/mesero/pedido/carrito/agregar/' + ${item.platoId}" hx-target="#order-summary-panel">+</button>
                 </div>
             </div>
             <div style="margin-top:5px;">
+                <!-- Si el plato tiene una instrucción de preparación (nota), la renderiza -->
                 <span th:if="${item.nota != null and !item.nota.empty}" style="font-size:12px; color:orange;" th:text="'📝 ' + ${item.nota}">Nota</span>
+                <!-- Si no tiene nota, muestra la acción para inyectar un modal en el final del body -->
                 <button th:if="${item.nota == null or item.nota.empty}" 
                         th:hx-get="'/mesero/pedido/carrito/nota/' + ${item.platoId}" 
                         hx-target="body" hx-swap="beforeend"
@@ -26,6 +68,7 @@
         </div>
     </div>
     
+    <!-- Sección de resumen financiero del pedido -->
     <div class="summary-totals-box">
         <div class="summary-totals-row grand-total">
             <div style="width:100%">
@@ -36,6 +79,7 @@
         </div>
     </div>
     
+    <!-- Botón de guardado final. Deshabilitado si el carrito está vacío. Ejecuta un POST asíncrono al endpoint para generar el pedido y refresca #mesero-app -->
     <button class="btn btn-primary" id="btn-send-to-kitchen" style="width: 100%; padding: 12px;" 
             th:disabled="${#lists.isEmpty(carrito.items)}"
             hx-post="/mesero/pedido/finalizar"

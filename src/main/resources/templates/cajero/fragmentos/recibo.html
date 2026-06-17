@@ -1,19 +1,58 @@
+<!-- 
+  =============================================================================
+  PROYECTO ACADÉMICO - EN SU PUNTO (Comprobante Electrónico de Venta)
+  PROPÓSITO:
+  - Renderizado dinámico de un ticket térmico simulado (boleta de venta o factura 
+    electrónica) para su previsualización en pantalla e impresión. Es compatible 
+    tanto con cobros de cuentas totales como con cobros individuales de cuentas divididas.
+  
+  TECNOLOGÍAS EXPLICADAS:
+  1. Thymeleaf:
+     - th:fragment="comprobante": Define este fragmento reutilizable.
+     - th:with: Declara variables locales ('totalVal') dentro de un bloque HTML, 
+       simplificando expresiones repetitivas o calculando valores condicionales.
+     - #temporals.format: Utilidad del módulo de fechas java.time de Thymeleaf para 
+       formatear la fecha/hora en un patrón legible (dd/MM/yyyy HH:mm).
+     - th:if: Bloques lógicos condicionales de renderizado para mostrar metadatos 
+       específicos (ej. RUC si es factura, DNI si es boleta).
+     - th:each: Itera sobre los detalles del pedido para listar los platos consumidos.
+     - Operaciones Matemáticas: Cálculos inline como 'totalVal / 1.18' (Base imponible)
+       y 'totalVal - (totalVal / 1.18)' (I.G.V. 18%).
+  2. HTMX:
+     - th:hx-get / hx-target / onclick: Permite a las fracciones intermedias cerrar 
+       el modal y refrescar el panel lateral con la lista actualizada de fracciones, 
+       sin alterar el estado de la barra lateral de mesas.
+  3. JavaScript / Estilo CSS para Impresión:
+     - window.print(): Función nativa de impresión. El script encapsula la clase 
+       '.ticket-receipt' y la envía a una nueva ventana con estilos `@page` adaptados 
+       a anchos térmicos (80mm), simulando una ticketera de punto de venta físico.
+  4. Contexto de Datos:
+     - ${tipoComprobante}: 'boleta' o 'factura'.
+     - ${docNum}: Número correlativo generado (ej. B001-000021).
+     - ${pedido}: Objeto Pedido.
+     - ${esFraccion}: Boolean que indica si es cobro fraccionado.
+     - ${fraccionMonto}: Monto de la fracción individual.
+     - ${esUltimaFraccion}: Boolean que indica si es el cobro final.
+  =============================================================================
+-->
 <div th:fragment="comprobante" class="modal-overlay" style="backdrop-filter: blur(8px); opacity: 1; pointer-events: auto; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(10, 14, 23, 0.85); z-index: 2000; display: flex; align-items: center; justify-content: center; overflow-y: auto;" id="receipt-modal">
     <div class="modal-container" style="background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-lg); width: 90%; max-width: 480px; box-shadow: var(--shadow-lg); display: flex; flex-direction: column; margin: 20px 0;">
         <div class="modal-header" style="padding: 18px 24px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
             <h3 class="modal-title" style="font-size: 1.2rem; color: white; display: flex; align-items: center; gap: 8px;">
+                <!-- Thymeleaf: Modifica dinámicamente el título del modal según el tipo de documento -->
                 <span th:text="${tipoComprobante == 'boleta' ? '📄 Boleta de Venta' : '🏢 Factura Electrónica'}">Comprobante</span>
             </h3>
             <button class="modal-close" onclick="location.reload()" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.5rem; width: 32px; height: 32px; border-radius: 50%;">&times;</button>
         </div>
         
         <div class="modal-body" style="padding: 24px; overflow-y: auto; max-height: 70vh;">
-            <!-- Thermal Ticket Mockup Container -->
+            <!-- Contenedor del Ticket Térmico Simulado -->
+            <!-- Thymeleaf th:with: Define totalVal evaluando si el cobro es total o fraccionado -->
             <div class="ticket-receipt" 
                  th:with="totalVal=${esFraccion != null && esFraccion ? fraccionMonto : pedido.total}"
                  style="background: white; color: #1e293b; padding: 25px 20px; border-radius: 4px; font-family: 'Courier New', Courier, monospace; font-size: 0.85rem; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15); line-height: 1.4;">
                 
-                <!-- Business Info -->
+                <!-- Información Fiscal del Restaurante -->
                 <div style="text-align: center; margin-bottom: 15px;">
                     <h2 style="font-size: 1.2rem; font-weight: bold; margin: 0 0 5px 0; color: #0f172a;">EN SU PUNTO SAC</h2>
                     <p style="margin: 0 0 3px 0; font-size: 0.8rem;">RUC: 20123456789</p>
@@ -28,10 +67,11 @@
                     <p style="font-size: 1.05rem; font-weight: bold; margin: 5px 0; color: #0f172a;" th:text="${docNum}">B001-000001</p>
                 </div>
                 
-                <!-- Ticket Metadata -->
+                <!-- Metadatos de la Transacción -->
                 <div style="font-size: 0.8rem; margin-bottom: 10px; color: #334155;">
                     <div style="display: flex; justify-content: space-between;">
                         <span>Fecha:</span>
+                        <!-- Thymeleaf #temporals: Formatea tipos LocalDate / LocalDateTime -->
                         <span th:text="${fechaDocumento != null ? #temporals.format(fechaDocumento, 'dd/MM/yyyy HH:mm') : ''}">13/06/2026 14:45</span>
                     </div>
                     <div style="display: flex; justify-content: space-between;">
@@ -50,9 +90,9 @@
                 
                 <div style="border-bottom: 1px dashed #64748b; margin: 10px 0;"></div>
                 
-                <!-- Customer Details (Boleta / Factura) -->
+                <!-- Datos del Cliente (Renderizado Condicional) -->
                 <div style="font-size: 0.8rem; margin-bottom: 10px; color: #334155;" th:if="${tipoComprobante == 'factura' || (dniCliente != null && !dniCliente.isEmpty())}">
-                    <!-- For Factura -->
+                    <!-- Si el comprobante es Factura -->
                     <div th:if="${tipoComprobante == 'factura'}">
                         <div style="font-weight: bold; margin-bottom: 3px;">CLIENTE:</div>
                         <div style="display: flex; justify-content: space-between;">
@@ -69,7 +109,7 @@
                         </div>
                     </div>
                     
-                    <!-- For Boleta (with DNI) -->
+                    <!-- Si el comprobante es Boleta y se identificó con DNI -->
                     <div th:if="${tipoComprobante == 'boleta' && dniCliente != null && !dniCliente.isEmpty()}">
                         <div style="font-weight: bold; margin-bottom: 3px;">CLIENTE:</div>
                         <div style="display: flex; justify-content: space-between;">
@@ -84,7 +124,7 @@
                     <div style="border-bottom: 1px dashed #64748b; margin: 10px 0;"></div>
                 </div>
 
-                <!-- Products Table -->
+                <!-- Tabla de Productos/Servicios -->
                 <table style="width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-bottom: 10px;">
                     <thead>
                         <tr style="border-bottom: 1px dashed #64748b; text-align: left;">
@@ -95,14 +135,14 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <!-- Si es cuenta normal/total -->
+                        <!-- Flujo A: Si es cobro de cuenta normal/completa -->
                         <tr th:if="${esFraccion == null || !esFraccion}" th:each="d : ${pedido.detalles}">
                             <td style="padding: 4px 0; vertical-align: top;" th:text="${d.cantidad}">1</td>
                             <td style="padding: 4px 0; vertical-align: top; word-break: break-all;" th:text="${d.plato.nombre}">Ceviche Mixto</td>
                             <td style="padding: 4px 0; vertical-align: top; text-align: right;" th:text="${#numbers.formatDecimal(d.precioUnitario, 1, 2)}">25.00</td>
                             <td style="padding: 4px 0; vertical-align: top; text-align: right;" th:text="${#numbers.formatDecimal(d.precioUnitario * d.cantidad, 1, 2)}">25.00</td>
                         </tr>
-                        <!-- Si es cuenta dividida (fraccion) -->
+                        <!-- Flujo B: Si es cobro parcial (fracción de cuenta dividida) -->
                         <tr th:if="${esFraccion != null && esFraccion}">
                             <td style="padding: 4px 0; vertical-align: top;">1</td>
                             <td style="padding: 4px 0; vertical-align: top; word-break: break-all;" th:text="'PAGO FRACCIONADO - CLIENTE ' + ${numeroCliente}">Pago Fraccionado</td>
@@ -114,14 +154,16 @@
                 
                 <div style="border-bottom: 1px dashed #64748b; margin: 10px 0;"></div>
                 
-                <!-- Totals -->
+                <!-- Desglose de Operaciones y Cálculos Fiscales -->
                 <div style="font-size: 0.8rem; margin-bottom: 10px; color: #334155;">
                     <div style="display: flex; justify-content: space-between;">
                         <span>OP. GRAVADA:</span>
+                        <!-- Subtotal base sin el 18% del I.G.V. -->
                         <span th:text="'S/ ' + ${#numbers.formatDecimal(totalVal / 1.18, 1, 2)}">S/ 0.00</span>
                     </div>
                     <div style="display: flex; justify-content: space-between;">
                         <span>I.G.V. (18%):</span>
+                        <!-- Cálculo exacto de la parte del I.G.V. -->
                         <span th:text="'S/ ' + ${#numbers.formatDecimal(totalVal - (totalVal / 1.18), 1, 2)}">S/ 0.00</span>
                     </div>
                     <div style="display: flex; justify-content: space-between; font-size: 1.05rem; font-weight: bold; color: #0f172a; margin-top: 5px;">
@@ -132,13 +174,13 @@
                 
                 <div style="border-bottom: 1px dashed #64748b; margin: 10px 0;"></div>
                 
-                <!-- Payment Information -->
+                <!-- Información Adicional de Pago -->
                 <div style="font-size: 0.8rem; color: #334155;">
                     <div style="display: flex; justify-content: space-between; text-transform: uppercase;">
                         <span>Método de Pago:</span>
                         <span style="font-weight: bold;" th:text="${metodoPago}">Efectivo</span>
                     </div>
-                    <!-- If Cash -->
+                    <!-- Desglose de vuelto de caja si el pago fue en efectivo -->
                     <div th:if="${metodoPago == 'efectivo'}">
                         <div style="display: flex; justify-content: space-between;">
                             <span>Efectivo Recibido:</span>
@@ -151,9 +193,9 @@
                     </div>
                 </div>
                 
-                <!-- QR Code & Footer Mockup -->
+                <!-- Pie de Ticket y Códigos de Control (Representación) -->
                 <div style="text-align: center; margin-top: 25px; font-size: 0.75rem; color: #64748b;">
-                    <!-- Simple Mockup of a Barcode/QR Code using character patterns -->
+                    <!-- Simulación visual de código de barras mediante texto monospace -->
                     <div style="letter-spacing: 2px; font-size: 0.7rem; margin-bottom: 8px; font-family: monospace; color: #334155;">
                         ||||| | ||| |||| | |||||| || ||||| | ||
                     </div>
@@ -165,14 +207,17 @@
         </div>
         
         <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid var(--border-color); background-color: rgba(10, 14, 23, 0.4); display: flex; align-items: center; justify-content: flex-end; gap: 12px;">
+            <!-- Ejecuta la lógica JavaScript para mandar el ticket HTML a impresión de sistema -->
             <button class="btn btn-secondary" onclick="window.printReceipt()" style="display: flex; align-items: center; gap: 6px;">
                 <span>🖨️</span> Imprimir Ticket
             </button>
-            <!-- Si es cobro total o la última fracción: refrescar para liberar mesa -->
+            
+            <!-- Flujo Final A: Si es cobro de cuenta completa o es la última fracción, se recarga para liberar la mesa -->
             <button th:if="${esFraccion == null || !esFraccion || (esUltimaFraccion != null && esUltimaFraccion)}" class="btn btn-primary" onclick="location.reload()" style="display: flex; align-items: center; gap: 6px;">
                 <span>✅</span> Finalizar y Liberar Mesa
             </button>
-            <!-- Si es fracción intermedia: cerrar boleta y continuar cobrando otras fracciones -->
+            
+            <!-- Flujo Final B: Si es una fracción intermedia, cierra el ticket y actualiza el panel lateral vía HTMX sin recargar la página entera -->
             <button th:if="${esFraccion != null && esFraccion && (esUltimaFraccion == null || !esUltimaFraccion)}" class="btn btn-primary" 
                     th:hx-get="'/cajero/mesa/' + ${pedido.mesa.id} + '/panel'"
                     hx-target="#cashier-right-panel"
@@ -183,17 +228,19 @@
         </div>
     </div>
 
-    <!-- Script specifically for printing the receipt section cleanly -->
+    <!-- Script de impresión dinámica de ticket térmico -->
     <script>
         window.printReceipt = function() {
+            // Extrae el HTML del ticket para procesarlo en un documento aislado
             const receiptContent = document.querySelector('.ticket-receipt').outerHTML;
             const originalBody = document.body.innerHTML;
             
-            // Create a temporary window or iframe to print, or style the body
+            // Abre una pestaña en blanco para inyectar el contenido y aplicar estilos de impresión
             const printWindow = window.open('', '_blank');
             printWindow.document.write('<html><head><title>Imprimir Comprobante</title>');
             printWindow.document.write('<style>');
             printWindow.document.write('body { margin: 0; padding: 10px; font-family: "Courier New", Courier, monospace; }');
+            // Configura la directiva @page para un ancho típico de ticketera térmica (80mm)
             printWindow.document.write('@page { size: 80mm auto; margin: 0; }');
             printWindow.document.write('.ticket-receipt { box-shadow: none !important; border-radius: 0 !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; }');
             printWindow.document.write('</style></head><body>');
@@ -201,7 +248,7 @@
             printWindow.document.write('</body></html>');
             printWindow.document.close();
             
-            // Give it time to load resource structures if any
+            // Retardo de 250ms para asegurar la carga del DOM en la nueva ventana antes de imprimir
             setTimeout(function() {
                 printWindow.print();
                 printWindow.close();

@@ -1,9 +1,41 @@
+<!-- 
+====================================================================================================
+PROYECTO ACADÉMICO - EXPLICACIÓN DE TECNOLOGÍAS UTILIZADAS (THYMELEAF + HTMX + HTML5)
+====================================================================================================
+FRAGMENTO / MODAL: nota_modal.html (Agregar Instrucción de Preparación al Plato)
+
+1. PROPÓSITO:
+   Permite al mesero ingresar una anotación o instrucción especial para un plato agregado al carrito 
+   (ejemplo: "sin cebolla", "término medio"). Esta nota se transfiere a la cocina para su preparación.
+
+2. INTEGRACIÓN CON THYMELEAF (SSR):
+   - th:fragment="modal": Declara este div como un fragmento independiente ("modal") para su renderización 
+     asíncrona.
+   - th:hx-post: Genera dinámicamente la URL de envío POST que mapea el ID del plato ('/nota/{platoId}') 
+     al que se le agregará la nota de cocina.
+
+3. INTEGRACIÓN CON HTMX (Envío de Formularios y Descarte de Elementos):
+   - hx-post: Envía los campos de texto del formulario de forma asíncrona mediante AJAX.
+   - hx-target="#order-summary-panel": Actualiza el fragmento de la orden en el panel de resumen derecho.
+   - hx-on::after-request: Una vez procesada con éxito la petición en el backend y retornado el nuevo carrito, 
+     el modal se autotermina y se remueve del DOM a través de JS (`this.closest('.modal-overlay').remove()`).
+
+4. CONTEXTO DE DATOS:
+   - platoId: Identificador único del plato seleccionado dentro del carrito de la sesión activa.
+====================================================================================================
+-->
 <div th:fragment="modal" class="modal-overlay" style="backdrop-filter: blur(8px); opacity: 1; pointer-events: auto; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(10, 14, 23, 0.8); z-index: 2000; display: flex; align-items: center; justify-content: center;" id="nota-plato-modal">
     <div class="modal-container" style="background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-lg); width: 90%; max-width: 450px; box-shadow: var(--shadow-lg); display: flex; flex-direction: column;">
         <div class="modal-header" style="padding: 20px 24px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
             <h3 class="modal-title" style="font-size: 1.25rem; color: white;">Agregar Nota</h3>
             <button class="modal-close" onclick="this.closest('.modal-overlay').remove()" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.5rem; width: 32px; height: 32px; border-radius: 50%;">&times;</button>
         </div>
+        <!-- 
+           Formulario HTMX para enviar la nota.
+           - th:hx-post mapea dinámicamente la acción al platoId.
+           - hx-target actualiza el carrito en el panel lateral.
+           - hx-on::after-request elimina la superposición modal del DOM tras procesarse.
+        -->
         <form th:hx-post="'/mesero/pedido/carrito/nota/' + ${platoId}" hx-target="#order-summary-panel" hx-on::after-request="this.closest('.modal-overlay').remove()">
             <div class="modal-body" style="padding: 24px;">
                 <div class="form-group">

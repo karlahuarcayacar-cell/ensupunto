@@ -1,24 +1,52 @@
+<!-- 
+  =============================================================================
+  PROYECTO ACADÉMICO - EN SU PUNTO (Modal de Cobro Fraccionado)
+  PROPÓSITO:
+  - Formulario en ventana modal para realizar el cobro individual de una fracción
+    específica en una cuenta dividida (método de división por partes iguales).
+  
+  TECNOLOGÍAS EXPLICADAS:
+  1. Thymeleaf:
+     - th:fragment="modal": Declara este bloque como un fragmento modular que
+       puede ser renderizado de forma aislada por el controlador y devuelto como HTML.
+     - th:text: Enlaza dinámicamente datos como el número de cliente y el monto formateado.
+     - th:hx-post: Genera dinámicamente el atributo de acción POST de HTMX para apuntar
+       al endpoint correcto de la fracción actual.
+     - #numbers.formatDecimal: Utilidad para formatear números de coma flotante a moneda.
+  2. HTMX:
+     - hx-target="body": Inserta el comprobante (recibo) resultante al final del elemento <body>.
+     - hx-swap="beforeend": Agrega el contenido HTML retornado al final del body en lugar de reemplazarlo.
+     - hx-on::after-request: Evento personalizado de HTMX que elimina el modal actual del DOM
+       después de que se completa con éxito la petición POST de cobro.
+  3. Contexto de Datos:
+     - ${fraccion}: Objeto FraccionPedido (id, numeroCliente, monto).
+  =============================================================================
+-->
 <div th:fragment="modal" class="modal-overlay" style="backdrop-filter: blur(8px); opacity: 1; pointer-events: auto; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(10, 14, 23, 0.8); z-index: 2000; display: flex; align-items: center; justify-content: center;" id="pay-fraction-modal">
     <div class="modal-container" style="background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-lg); width: 90%; max-width: 450px; box-shadow: var(--shadow-lg); display: flex; flex-direction: column;">
         
         <div class="modal-header" style="padding: 20px 24px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
+            <!-- Thymeleaf: Muestra dinámicamente el número de cliente al que se cobra la fracción -->
             <h3 class="modal-title" style="font-size: 1.25rem; color: white;" th:text="'💳 Cobrar Cliente ' + ${fraccion.numeroCliente}">Cobrar Cliente</h3>
             <button class="modal-close" onclick="this.closest('.modal-overlay').remove()" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.5rem; width: 32px; height: 32px; border-radius: 50%;">&times;</button>
         </div>
         
+        <!-- HTMX: Envía de forma asíncrona (POST) los datos de pago al endpoint dinámico de Thymeleaf -->
+        <!-- hx-on::after-request: Elimina el modal de cobro del DOM una vez ejecutado -->
         <form th:hx-post="'/cajero/fracciones/' + ${fraccion.id} + '/pagar'" hx-target="body" hx-swap="beforeend" hx-on::after-request="this.closest('.modal-overlay').remove()" style="display: flex; flex-direction: column; margin: 0;">
             <div class="modal-body" style="padding: 24px; display: flex; flex-direction: column; gap: 12px; max-height: 60vh; overflow-y: auto;">
                 
-                <!-- Display Amount -->
+                <!-- Mostrar Monto formateado con Thymeleaf -->
                 <div style="text-align: center; padding: 15px; background: rgba(255, 102, 0, 0.05); border: 1px solid rgba(255, 102, 0, 0.15); border-radius: 8px;">
                     <span style="font-size: 0.85rem; color: var(--text-secondary); display: block;">Monto a Cobrar:</span>
                     <strong style="font-size: 1.8rem; color: var(--accent);" th:text="'S/ ' + ${#numbers.formatDecimal(fraccion.monto, 1, 2)}">S/ 0.00</strong>
                 </div>
 
+                <!-- Campos Ocultos para enviar montos de efectivo y vuelto calculados por JavaScript -->
                 <input type="hidden" name="efectivoRecibido" id="frac-efectivo-recibido-hidden" value="0.00">
                 <input type="hidden" name="vuelto" id="frac-vuelto-hidden" value="0.00">
 
-                <!-- Comprobante Type Selector -->
+                <!-- Selector de Tipo de Comprobante (Boleta / Factura) -->
                 <div>
                     <label style="font-size: 0.85rem; color: var(--text-secondary); display: block; margin-bottom: 5px;">Tipo de Comprobante:</label>
                     <div style="display: flex; gap: 8px;">
@@ -34,7 +62,7 @@
                     </div>
                 </div>
 
-                <!-- Boleta Fields -->
+                <!-- Campos de Boleta (DNI Opcional) -->
                 <div id="frac-boleta-fields" style="padding: 12px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 8px; display: flex; flex-direction: column; gap: 8px;">
                     <div>
                         <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 3px;">DNI (Opcional):</label>
@@ -46,7 +74,7 @@
                     </div>
                 </div>
 
-                <!-- Factura Fields -->
+                <!-- Campos de Factura (RUC y Razón Social obligatorios si se activa) -->
                 <div id="frac-factura-fields" style="padding: 12px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 8px; display: none; flex-direction: column; gap: 8px;">
                     <div>
                         <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 3px;">RUC:</label>
@@ -62,7 +90,7 @@
                     </div>
                 </div>
 
-                <!-- Payment Method -->
+                <!-- Métodos de Pago Disponibles -->
                 <div>
                     <label style="font-size: 0.85rem; color: var(--text-secondary); display: block; margin-bottom: 5px;">Método de Pago:</label>
                     <div class="payment-method-selector" style="margin-bottom: 0;">
@@ -77,13 +105,14 @@
                     </div>
                 </div>
 
-                <!-- Cash Calculator -->
+                <!-- Calculadora de Vuelto para pagos en Efectivo -->
                 <div id="frac-cash-calculator" style="padding: 12px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 8px; display: flex; flex-direction: column; gap: 8px;">
                     <div>
                         <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 3px;">Efectivo Recibido (S/):</label>
+                        <!-- Thymeleaf th:data-total: Pasa el monto total esperado como atributo HTML5 data-total para el cálculo en JS -->
                         <input type="number" step="0.01" min="0" id="frac-cash-received" class="form-control" style="width: 100%; padding: 6px 10px; background: var(--bg-primary); border: 1px solid var(--border-color); color: white; border-radius: 4px; font-size: 0.9rem;" placeholder="0.00" 
-                               th:data-total="${#numbers.formatDecimal(fraccion.monto, 1, 2, 'POINT')}"
-                               oninput="calculateFracChange(this.getAttribute('data-total'))">
+                                th:data-total="${#numbers.formatDecimal(fraccion.monto, 1, 2, 'POINT')}"
+                                oninput="calculateFracChange(this.getAttribute('data-total'))">
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 0.9rem; margin-top: 5px;">
                         <span>Vuelto:</span>
@@ -100,7 +129,9 @@
         </form>
     </div>
 
+    <!-- Script de control interactivo local de la vista -->
     <script>
+        // Muestra u oculta la calculadora de vuelto según el método seleccionado
         function toggleFracCashCalc(show) {
             document.getElementById('frac-cash-calculator').style.display = show ? 'flex' : 'none';
             if (!show) {
@@ -111,11 +142,15 @@
                 document.getElementById('frac-cash-change').style.color = '#10b981';
             }
         }
+        
+        // Actualiza el aspecto de los botones de selección del método de pago
         function updateFracMethodUI(method) {
             document.getElementById('lbl-frac-efectivo').classList.toggle('active', method === 'efectivo');
             document.getElementById('lbl-frac-tarjeta').classList.toggle('active', method === 'tarjeta');
             document.getElementById('lbl-frac-yape').classList.toggle('active', method === 'yape');
         }
+        
+        // Alterna entre campos de Boleta y Factura, aplicando restricciones de obligatoriedad en los inputs
         function toggleFracComprobanteFields(type) {
             const isBoleta = type === 'boleta';
             document.getElementById('frac-boleta-fields').style.display = isBoleta ? 'flex' : 'none';
@@ -134,6 +169,8 @@
                 rsInput.setAttribute('required', 'required');
             }
         }
+        
+        // Calcula dinámicamente el vuelto basándose en el efectivo ingresado y actualiza los campos ocultos
         function calculateFracChange(totalStr) {
             const total = parseFloat(totalStr) || 0;
             const receivedVal = document.getElementById('frac-cash-received').value;

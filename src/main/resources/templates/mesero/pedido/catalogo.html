@@ -1,11 +1,41 @@
+<!-- 
+====================================================================================================
+PROYECTO ACADÉMICO - EXPLICACIÓN DE TECNOLOGÍAS UTILIZADAS (THYMELEAF + HTMX + HTML5)
+====================================================================================================
+FRAGMENTO: catalogo.html (Catálogo de Platos por Categoría)
+
+1. PROPÓSITO:
+   Este fragmento renderiza de forma dinámica la cuadrícula de platos disponibles según la categoría
+   seleccionada. Permite al mesero agregar platos a la orden actual asíncronamente.
+
+2. INTEGRACIÓN CON THYMELEAF (SSR):
+   - th:fragment="lista": Define un fragmento modular y reutilizable de nombre "lista".
+   - th:remove="tag": Indica a Thymeleaf que descarte el div contenedor de este fragmento al compilar,
+     manteniendo limpia la estructura del DOM.
+   - th:each="plato : ${platos}": Recorre cada plato recuperado de la base de datos para construir su tarjeta de UI.
+   - th:text: Imprime las propiedades del plato previniendo inyección de scripts del lado del cliente.
+   - th:hx-post: Asigna una ruta HTMX dinámica basada en el ID del plato ('/mesero/pedido/carrito/agregar/{id}').
+
+3. INTEGRACIÓN CON HTMX (Interactividad Parcial):
+   - hx-post: Envía un POST AJAX cuando el usuario hace clic sobre el botón "+ Agregar".
+   - hx-target="#order-summary-panel": Captura el HTML de respuesta (carrito de compras actualizado)
+     y lo monta sobre el panel lateral derecho del dashboard.
+
+4. CONTEXTO DE DATOS:
+   - platos: Lista de platos correspondientes a una categoría específica, cargados en el modelo del controlador.
+====================================================================================================
+-->
 <div th:fragment="lista" th:remove="tag">
+    <!-- Bucle iterativo sobre la lista de platos provista por el controlador de Spring Boot -->
     <div th:each="plato : ${platos}" class="glass-card dish-item-card dish-item" style="display:flex;">
         <div>
+            <!-- th:text inyecta dinámicamente el nombre y descripción del plato -->
             <div class="dish-item-name" th:text="${plato.nombre}">Plato</div>
             <p class="dish-item-desc" th:text="${plato.descripcion}">Desc</p>
         </div>
         <div class="dish-item-footer">
             <span class="dish-item-price" th:text="'S/ ' + ${#numbers.formatDecimal(plato.precio, 1, 2)}">Precio</span>
+            <!-- Botón con hx-post mapeado al ID del plato y con target al resumen lateral de pedido -->
             <button class="btn btn-primary btn-sm" 
                     th:hx-post="'/mesero/pedido/carrito/agregar/' + ${plato.id}"
                     hx-target="#order-summary-panel">+ Agregar</button>

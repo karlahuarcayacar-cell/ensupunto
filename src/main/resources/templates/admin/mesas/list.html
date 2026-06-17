@@ -1,3 +1,32 @@
+<!--
+  TECNOLOGÍA DE VISTA DE FRAGMENTO: Listado de Mesas (list.html)
+  
+  Propósito:
+    Este fragmento HTML gestiona y muestra la tabla con todas las mesas configuradas en el restaurante.
+    Permite abrir el modal de creación y realizar acciones de edición o eliminación a través de HTMX.
+
+  Tecnologías Utilizadas:
+    - Thymeleaf:
+      * th:fragment="content": Declara este bloque como el fragmento 'content' principal para la sección de mesas.
+      * th:if: Evalúa condiciones booleanas para mostrar mensajes informativos/alertas de error (`errorMsg`) o de éxito (`successMsg`).
+      * th:each="m : ${mesas}": Bucle (loop) que recorre la colección de mesas y crea una fila de tabla (`<tr>`) por cada una.
+      * th:text: Renderiza dinámicamente texto seguro contra inyección HTML en base a los atributos de la mesa (`m.nombre`, `m.estado`).
+      * th:style: Aplica condicionalmente colores de fondo e inline-styles en base al estado de la mesa (si está libre o con pedidos activos).
+      * Expresiones de Cadenas (#strings.toUpperCase, #strings.replace): Utiliza la clase de utilidad de Thymeleaf para reemplazar guiones bajos por espacios y convertir a mayúsculas.
+    - HTMX:
+      * hx-get="/admin/mesas/nuevo": Realiza una petición GET asíncrona para obtener el formulario de nueva mesa.
+      * hx-swap="beforeend": Inyecta la respuesta recibida justo antes del final del elemento seleccionado (en este caso, añade la modal de formulario al final del `<body>`).
+      * hx-target="body": Apunta el modal al contenedor general de la página para que se superponga sobre todo el dashboard.
+      * th:hx-get: Combina expresiones dinámicas de Thymeleaf con HTMX para generar endpoints específicos de edición (ej. `/admin/mesas/editar/{id}`).
+      * th:hx-delete: Genera dinámicamente peticiones HTTP DELETE para eliminar registros específicos.
+      * hx-confirm: Muestra un cuadro de confirmación nativo del navegador antes de disparar la petición HTMX.
+      * hx-target="#admin-content": Tras realizar un cambio (como eliminar), indica que el HTML devuelto por el servidor (lista actualizada) se renderice en el cuerpo de la administración.
+
+  Contexto de Datos (Model Attributes):
+    - mesas: Lista (Iterable) de entidades Mesa cargadas en base de datos.
+    - errorMsg (Opcional): Mensaje de error para notificar fallas de validación o base de datos.
+    - successMsg (Opcional): Mensaje de éxito al completar acciones de inserción, actualización o eliminación.
+-->
 <div th:fragment="content" class="admin-section">
     <div class="glass-card">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
@@ -5,10 +34,11 @@
                 <h3 style="color:white; font-size:1.1rem;">Mesas del Salón</h3>
                 <p style="color:var(--text-secondary); font-size:0.85rem;">Agrega, modifica o elimina las mesas físicas del salón de atención.</p>
             </div>
+            <!-- HTMX: Solicita el formulario de creación y lo agrega al final del body para no alterar la estructura actual -->
             <button class="btn btn-primary" hx-get="/admin/mesas/nuevo" hx-target="body" hx-swap="beforeend">+ Nueva Mesa</button>
         </div>
         
-        <!-- Alertas de éxito y error -->
+        <!-- Alertas de éxito y error controladas dinámicamente por Thymeleaf -->
         <div th:if="${errorMsg}" style="background: rgba(239,68,68,0.15); color: #f87171; padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; border: 1px solid rgba(239,68,68,0.3); font-size: 0.88rem; display: flex; align-items: center; gap: 8px;">
             <span>⚠️</span> <span th:text="${errorMsg}">Error message</span>
         </div>
@@ -25,17 +55,23 @@
                 </tr>
             </thead>
             <tbody>
+                <!-- Thymeleaf: Bucle iterativo sobre la lista de mesas suministrada por el controlador -->
                 <tr th:each="m : ${mesas}">
                     <td style="color:white; font-weight:600;" th:text="${m.nombre}">Mesa 1</td>
                     <td>
+                        <!-- Thymeleaf: th:style dinámico para aplicar un diseño de píldora verde si está 'libre' o naranja para cualquier otro estado. 
+                             Además, se limpian los guiones bajos de la base de datos (por ejemplo, de EN_PREPARACION a EN PREPARACION) -->
                         <span class="status-pill" 
                               th:style="${m.estado == 'libre' ? 'background: rgba(16,185,129,0.15); color: #34d399; padding: 3px 10px; border-radius: 50px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase;' : 'background: rgba(245,158,11,0.15); color: #fbbf24; padding: 3px 10px; border-radius: 50px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase;'}"
                               th:text="${#strings.toUpperCase(#strings.replace(m.estado, '_', ' '))}">LIBRE</span>
                     </td>
                     <td style="display:flex; gap:8px;">
+                        <!-- Thymeleaf + HTMX: Atributo dinámico th:hx-get para construir la URL del recurso a editar -->
                         <button class="btn btn-secondary btn-sm" 
                                 th:hx-get="'/admin/mesas/editar/' + ${m.id}" 
                                 hx-target="body" hx-swap="beforeend">Editar</button>
+                        <!-- Thymeleaf + HTMX: th:hx-delete realiza una petición DELETE para destruir de forma lógica o física el recurso. 
+                             Muestra una alerta nativa al usuario antes de proceder. -->
                         <button class="btn btn-danger btn-sm" 
                                 th:hx-delete="'/admin/mesas/' + ${m.id}"
                                 hx-confirm="¿Estás segura de que deseas eliminar esta mesa? Si tiene pedidos activos o históricos, la operación podría fallar."

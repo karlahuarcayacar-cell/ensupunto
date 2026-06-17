@@ -1,6 +1,40 @@
+<!-- 
+====================================================================================================
+PROYECTO ACADÉMICO - EXPLICACIÓN DE TECNOLOGÍAS UTILIZADAS (THYMELEAF + HTMX + HTML5)
+====================================================================================================
+FRAGMENTO / MODAL: detalle_modal.html (Consulta y Modificación de un Pedido en Curso)
+
+1. PROPÓSITO:
+   Este modal muestra el desglose completo del pedido asociado a una mesa ocupada, indicando
+   los platos solicitados, las notas de preparación, el estado del pedido y el total a pagar.
+   Si el pedido se encuentra en un estado que lo permita (pendiente o en preparación en cocina),
+   ofrece la opción de modificarlo.
+
+2. INTEGRACIÓN CON THYMELEAF (SSR):
+   - th:fragment="modal": Define esta vista como un fragmento independiente ("modal") cargado dinámicamente.
+   - th:text: Mapea atributos del pedido, tales como el nombre de la mesa ('${pedido.mesa.nombre}'), 
+     el identificador numérico ('#${pedido.id}'), el estado actual de la cocina y el desglose de los platos.
+   - th:each="d : ${pedido.detalles}": Estructura de control repetitiva para listar cada línea del detalle del pedido.
+   - th:if: Evalúa si existen notas particulares en cada plato para renderizarlas con un ícono alusivo.
+   - th:hx-get: Genera de forma dinámica la URL del backend encargada de iniciar la edición ('/editar/{id}').
+
+3. INTEGRACIÓN CON HTMX (Acceso y Carga de Vistas Asíncronas):
+   - hx-get: Invoca de manera asíncrona la ruta de modificación. El backend decidirá si carga directamente el 
+     editor o si requiere autorización de administrador (devolviendo el fragmento de autorización).
+   - hx-target="body": Configura el destino de la respuesta HTML. Los modales devueltos se inyectarán en la raíz 
+     del body del documento.
+   - hx-swap="beforeend": Añade el modal devuelto al final de la página (sin pisar el contenido preexistente).
+   - hx-on::after-request: Evento JavaScript que se dispara tras finalizar la llamada HTMX, eliminando este modal 
+     de detalles actual del DOM para evitar acumulación visual.
+
+4. CONTEXTO DE DATOS:
+   - pedido: Objeto de tipo 'Pedido' que encapsula las relaciones con la mesa, los detalles y el estado.
+====================================================================================================
+-->
 <div th:fragment="modal" class="modal-overlay" style="backdrop-filter: blur(8px); opacity: 1; pointer-events: auto; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(10, 14, 23, 0.8); z-index: 2000; display: flex; align-items: center; justify-content: center;" id="mesa-detalle-modal">
     <div class="modal-container" style="background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-lg); width: 90%; max-width: 450px; box-shadow: var(--shadow-lg); display: flex; flex-direction: column;">
         <div class="modal-header" style="padding: 20px 24px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
+            <!-- Thymeleaf interpola dinámicamente el nombre de la mesa -->
             <h3 class="modal-title" style="font-size: 1.25rem; color: white;" th:text="'Detalles ' + ${pedido.mesa.nombre}">Detalles</h3>
             <button class="modal-close" onclick="this.closest('.modal-overlay').remove()" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.5rem; width: 32px; height: 32px; border-radius: 50%;">&times;</button>
         </div>
@@ -15,15 +49,19 @@
                     <span class="badge" style="background:var(--bg-tertiary);" th:text="${pedido.estado}">Estado</span>
                 </div>
             </div>
+            <!-- Contenedor con scroll vertical para el listado de platos consumidos -->
             <div style="max-height:200px; overflow-y:auto; margin-bottom:15px; background:rgba(0,0,0,0.2); padding:10px; border-radius:8px;">
+                <!-- Recorrido de los detalles del pedido con th:each -->
                 <div th:each="d : ${pedido.detalles}" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #222;">
                     <div>
                         <div style="color:white; font-size:0.9rem;" th:text="${d.cantidad} + 'x ' + ${d.plato.nombre}">1x Plato</div>
+                        <!-- Renderizado condicional en servidor si existe instrucción/nota para el cocinero -->
                         <div th:if="${d.nota != null and !d.nota.empty}" style="font-size:0.75rem; color:orange;" th:text="'📝 ' + ${d.nota}">Nota</div>
                     </div>
                     <div style="color:var(--text-secondary);" th:text="'S/ ' + ${#numbers.formatDecimal(d.precioUnitario * d.cantidad, 1, 2)}">S/ 0.00</div>
                 </div>
             </div>
+            <!-- Fila del total de consumo general -->
             <div style="display:flex; justify-content:space-between; font-size:1.2rem; font-weight:bold; color:var(--accent);">
                 <span>TOTAL:</span>
                 <span th:text="'S/ ' + ${#numbers.formatDecimal(pedido.total, 1, 2)}">S/ 0.00</span>
@@ -32,7 +70,12 @@
         <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid var(--border-color); background-color: rgba(10, 14, 23, 0.4); display: flex; align-items: center; justify-content: flex-end; gap: 12px;">
             <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cerrar</button>
 
-            <!-- Un solo botón: el endpoint decide si requiere autorización según el estado -->
+            <!-- 
+               Un solo botón: el controlador decide dinámicamente si carga el editor de pedidos directamente 
+               o si retorna el modal de autorización de administrador según el estado actual en la cocina.
+               - hx-target="body" e hx-swap="beforeend": Inyecta la respuesta asíncrona al final del body.
+               - hx-on::after-request: Elimina de inmediato el modal de detalles actual.
+            -->
             <button th:if="${pedido.estado == 'cocina_pendiente' or pedido.estado == 'cocina_preparacion'}"
                     class="btn btn-primary"
                     th:hx-get="'/mesero/pedido/editar/' + ${pedido.id}"

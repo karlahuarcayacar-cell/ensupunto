@@ -1,23 +1,56 @@
+<!-- 
+  =============================================================================
+  PROYECTO ACADÉMICO - EN SU PUNTO (Detalle de Cuenta Dividida/Fraccionada)
+  PROPÓSITO:
+  - Panel lateral para cuentas divididas. Muestra la lista de fracciones (clientes),
+    su estado de pago (pendiente/pagado con boleta y método de pago), el saldo restante,
+    y auto-dispara una notificación de mesa liberada cuando el saldo pendiente llega a cero.
+  
+  TECNOLOGÍAS EXPLICADAS:
+  1. Thymeleaf:
+     - th:fragment="detalle": Registra este panel lateral como un fragmento.
+     - th:hx-get: Configura dinámicamente la ruta GET de HTMX inyectando el ID de la mesa.
+     - th:each: Itera sobre las fracciones ('${fracciones}') de la cuenta.
+     - th:styleappend: Cambia dinámicamente el borde de la tarjeta (verde si está pagado).
+     - th:if: Muestra condicionalmente el botón de Cobrar (si está pendiente) o un checkmark (si está pagado).
+  2. HTMX:
+     - hx-trigger="refresh-split-list from:body": Mecanismo de actualización reactivo
+       basado en eventos. El panel escucha el evento 'refresh-split-list' en el body y,
+       al recibirlo, realiza la petición GET configurada en hx-get para auto-refrescarse.
+     - hx-trigger="load" (Auto-disparo al cargar): Usado para lanzar automáticamente
+       un GET hacia la notificación de liberación de mesa cuando el saldo es cero.
+     - hx-target / hx-swap: Carga modales directamente adjuntándolos al body de la página.
+  3. Contexto de Datos:
+     - ${mesaId}: Identificador de la mesa.
+     - ${fracciones}: Colección de FraccionPedido (id, pagado, monto, metodoPago, numeroCliente, numeroBoleta).
+     - ${saldoPendiente}: Monto acumulado de fracciones que aún no se pagan.
+  =============================================================================
+-->
 <div th:fragment="detalle" class="glass-card cashier-bill-panel" id="split-panel" 
      th:hx-get="'/cajero/mesa/' + ${mesaId} + '/panel'"
      hx-trigger="refresh-split-list from:body"
      style="display: flex; flex-direction: column; height: 100%;">
     <h3 style="font-size: 1.2rem; margin-bottom: 15px;">Clientes (Cuenta Dividida)</h3>
     <div id="split-list" style="flex: 1; min-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 5px;">
+        <!-- Iteración sobre las fracciones del pago de la mesa -->
         <div th:each="f : ${fracciones}" class="glass-card" 
              style="padding:10px; display:flex; justify-content:space-between; align-items:center;"
              th:styleappend="'border:1px solid ' + (${f.pagado} ? '#10b981' : '#2e3d60')">
             <div>
                 <div style="font-weight:bold;" th:text="'Cliente ' + ${f.numeroCliente}">Cliente X</div>
                 <div style="font-size:0.8rem; color:var(--text-secondary);" th:text="'Monto: S/ ' + ${#numbers.formatDecimal(f.monto, 1, 2)}">Monto</div>
+                <!-- Información adicional del pago si ya fue procesado -->
                 <div th:if="${f.pagado}" style="font-size:0.7rem; color:#10b981;" th:text="'Pagado (' + ${f.metodoPago} + ') - ' + ${f.numeroBoleta}">Boleta</div>
             </div>
+            <!-- Botón de Cobrar: Abre el modal de pago de la fracción vía HTMX AJAX GET -->
             <button th:if="${!f.pagado}" class="btn btn-primary btn-sm"
                     th:hx-get="'/cajero/fracciones/' + ${f.id} + '/pagar/prompt'"
                     hx-target="body" hx-swap="beforeend">Cobrar</button>
             <span th:if="${f.pagado}">✅</span>
         </div>
     </div>
+    
+    <!-- Sección de resumen del saldo pendiente -->
     <div style="margin-top:15px; border-top:1px solid #333; padding-top:10px;">
         <div style="display:flex; justify-content:space-between; color:var(--text-secondary);">
             <span>Saldo Pendiente:</span>
@@ -26,5 +59,6 @@
         </div>
     </div>
     
+    <!-- HTMX Auto-Trigger: Si el saldo es 0, carga asíncronamente el modal de mesa liberada -->
     <div th:if="${saldoPendiente == 0}" hx-trigger="load" hx-get="/cajero/notificar/mesa-liberada" hx-target="body" hx-swap="beforeend"></div>
 </div>

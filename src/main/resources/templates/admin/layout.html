@@ -1,8 +1,32 @@
+<!--
+  TECNOLOGÍA DE VISTA PRINCIPAL: Panel de Control Administrativo (layout.html)
+  
+  Propósito:
+    Este archivo sirve como plantilla base (Shell) para el panel de administración. Proporciona una interfaz 
+    estilo Single Page Application (SPA) para gestionar platos, personal, mesas y reportes sin recargas totales.
+
+  Tecnologías Utilizadas:
+    - Thymeleaf:
+      * th:replace: Inclusión estática/dinámica de componentes reutilizables como la cabecera (head) y barra de navegación (navbar).
+      * th:classappend: Condiciona la clase CSS 'active' dinámicamente basándose en la variable 'activeTab'.
+      * th:replace con sintaxis de preprocesamiento (~{admin/__${contentTemplate}__}): Carga dinámica del fragmento del panel solicitado.
+    - HTMX:
+      * hx-target: Define el elemento HTML (#admin-content) donde se inyectará la respuesta del servidor.
+      * hx-push-url: Habilita la actualización de la URL en la barra de direcciones para mantener la navegación nativa.
+      * hx-get: Realiza llamadas HTTP GET asíncronas vía AJAX para cambiar de tab sin recargar toda la página.
+      * Clases CSS transicionales (.htmx-request): Permite dar feedback visual al usuario (efecto blur/opacidad) mientras la petición se procesa.
+
+  Contexto de Datos (Model Attributes):
+    - activeTab: Define cuál pestaña está actualmente activa (ej. 'reportes', 'platos', 'personal', 'mesas').
+    - contentTemplate: Ruta dinámica del fragmento de contenido interno que Thymeleaf renderizará por primera vez (ej. 'platos/list').
+-->
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
+<!-- Thymeleaf: Reemplaza el head utilizando un fragmento común y envía el título de la página como parámetro -->
 <head th:replace="~{fragments/header :: head('Admin Dashboard')}"></head>
 <body>
 <div class="app-container">
+    <!-- Thymeleaf: Reemplaza el elemento header por la barra de navegación compartida -->
     <header th:replace="~{fragments/header :: navbar}"></header>
 
     <main class="main-content">
@@ -13,8 +37,11 @@
             </div>
         </div>
 
-        <!-- Tabs principales con HTMX -->
+        <!-- Tabs principales con HTMX. 
+             - hx-target: Hace que las respuestas de los botones internos se rendericen en el ID #admin-content.
+             - hx-push-url: Guarda el estado de la URL en el historial del navegador. -->
         <nav style="display: flex; gap: 0; border-bottom: 2px solid var(--border-color); margin-bottom: 24px;" hx-target="#admin-content" hx-push-url="true">
+            <!-- th:classappend de Thymeleaf añade la clase 'active' si activeTab coincide, resaltando visualmente la pestaña. -->
             <button class="admin-main-tab" 
                     th:classappend="${activeTab == 'reportes' ? 'active' : ''}"
                     hx-get="/admin/reportes" 
@@ -74,23 +101,34 @@
             .cat-pill.bebidas { background: rgba(59,130,246,0.15); color: #60a5fa; }
             .cat-pill.postres { background: rgba(139,92,246,0.15); color: #a78bfa; }
 
-            /* HTMX Request Loading Feedback */
+            /* 
+               HTMX Request Loading Feedback:
+               Cuando HTMX realiza una llamada asíncrona, de forma automática añade la clase '.htmx-request' 
+               al elemento emisor o al objetivo. Aquí la usamos para deshabilitar clicks y dar un efecto visual de carga (blur y opacidad).
+            */
             #admin-content.htmx-request, #reporte-tab-content.htmx-request {
                 opacity: 0.5;
                 filter: blur(1.5px);
                 pointer-events: none;
                 transition: all 0.2s ease;
             }
+            /* Indicador de carga por defecto oculto */
             .htmx-indicator {
                 display: none;
             }
+            /* Se muestra automáticamente cuando hay una petición HTMX activa */
             .htmx-request .htmx-indicator, .htmx-request.htmx-indicator {
                 display: block;
             }
         </style>
 
+        <!-- Contenedor Objetivo para las peticiones de HTMX -->
         <div id="admin-content">
-            <!-- Contenido dinámico cargado por HTMX -->
+            <!-- 
+              Thymeleaf:
+              Uso de la sintaxis '__${expression}__' para el preprocesamiento de la variable contentTemplate.
+              Esto permite renderizar dinámicamente el fragmento HTML correspondiente en la primera carga del servidor.
+            -->
             <div th:replace="~{admin/__${contentTemplate}__}"></div>
         </div>
     </main>
@@ -99,11 +137,19 @@
 <th:block th:replace="~{fragments/scripts :: commonScripts}"></th:block>
 
 <script>
+    /**
+     * Alterna la clase 'active' en la pestaña clickeada.
+     * Ayuda a la experiencia de usuario (UX) actualizando el estilo de los botones de navegación inmediatamente.
+     */
     function updateActiveTab(btn) {
         document.querySelectorAll('.admin-main-tab').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
     }
 
+    /**
+     * Abre un modal global que genera una vista previa en PDF del reporte solicitado.
+     * @param {string} type - Tipo de reporte ('dia', 'historico', 'personalizado').
+     */
     function previsualizarReporte(type) {
         let url = '';
         if (type === 'dia') {
@@ -126,6 +172,7 @@
             url = `/admin/reporte/periodo?desde=${desde}&hasta=${hasta}`;
         }
 
+        // Genera un iframe apuntando al endpoint de descarga de PDF. El navegador renderiza el visualizador nativo.
         const bodyHtml = `
             <div style="height: 550px; width: 100%; display: flex; flex-direction: column;">
                 <div id="pdf-preview-loading" style="color: var(--accent); text-align: center; padding: 20px 0; font-weight: bold;">
@@ -135,6 +182,7 @@
             </div>
         `;
 
+        // Llama a la función global para mostrar modales de la interfaz de la aplicación
         showCustomModal(
             "Vista Previa del Reporte", 
             bodyHtml, 

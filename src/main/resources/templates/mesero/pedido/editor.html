@@ -1,14 +1,55 @@
+<!-- 
+====================================================================================================
+PROYECTO ACADÉMICO - EXPLICACIÓN DE TECNOLOGÍAS UTILIZADAS (THYMELEAF + HTMX + HTML5)
+====================================================================================================
+FRAGMENTO: editor.html (Editor / Creador de Pedidos)
+
+1. PROPÓSITO:
+   Esta interfaz actúa como el panel unificado de creación y modificación de pedidos.
+   Consiste en un menú de categorías de platos (Entradas, Segundos, Bebidas, Postres), una
+   cuadrícula central (catálogo de platos) y un resumen lateral de la orden (carrito de compras).
+
+2. INTEGRACIÓN CON THYMELEAF (SSR):
+   - th:fragment="editor": Permite inyectar esta pantalla completa dentro de '#mesero-app' de forma dinámica.
+   - th:text (con operador ternario): Evalúa la bandera `${isModifying}` para cambiar dinámicamente el título
+     entre la modificación de un pedido existente o la creación de uno nuevo.
+   - th:classappend: Agrega dinámicamente la clase CSS 'active' a la pestaña de categoría seleccionada 
+     en base al valor '${activeCat}' enviado por el controlador.
+   - th:replace: Incluye en tiempo de renderizado los fragmentos del catálogo de platos (`mesero/pedido/catalogo :: lista`) 
+     y del carrito de compras (`mesero/pedido/carrito :: detalle`).
+
+3. INTEGRACIÓN CON HTMX (Navegación Asíncrona sin Recarga):
+   - hx-get (Volver al salón): Carga el salón de mesas de manera asíncrona dentro del contenedor '#mesero-app'.
+   - hx-target="#dishes-grid" (en nav): Propagación de target. Todos los enlaces/botones del menú que realicen peticiones 
+     HTMX actualizarán por defecto el contenedor de la cuadrícula de platos '#dishes-grid'.
+   - hx-push-url="false": Previene que HTMX modifique la URL de la barra de direcciones del navegador, manteniendo 
+     la URL limpia ya que la aplicación se comporta como un SPA virtual dentro de la sesión del mesero.
+
+4. CONTEXTO DE DATOS:
+   - isModifying: Boolean que indica si estamos en flujo de edición o creación.
+   - pedidoId / mesaId: Identificadores lógicos de la orden en curso o de la mesa asignada.
+   - activeCat: Identifica la categoría actualmente seleccionada (entradas, segundos, bebidas, postres).
+====================================================================================================
+-->
 <div th:fragment="editor" id="view-pedido" class="fade-in" style="height: 100%;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">  
         <div>
+            <!-- th:text evalúa dinámicamente si es un pedido nuevo o una modificación para renderizar el título correcto -->
             <h1 style="font-size: 1.6rem; color: white;" th:text="${isModifying ? 'Modificar Pedido #' + pedidoId : 'Nuevo Pedido: Mesa ' + mesaId}">Nuevo Pedido</h1>
             <p style="color: var(--text-secondary); font-size: 0.85rem;">Selecciona los platos para la orden.</p>
         </div>
+        <!-- Botón para retornar al salón general. HTMX descarga el fragmento y lo inyecta en el contenedor principal -->
         <button class="btn btn-secondary" hx-get="/mesero/salon/fragment" hx-target="#mesero-app">← Volver al Salón</button>
     </div>
 
     <div class="order-creator-container">
+        <!-- 
+           Navegación por categorías de platos.
+           Al definir hx-target="#dishes-grid" en la etiqueta nav contenedora,
+           todas las llamadas hx-get de los botones inferiores heredarán este target automáticamente.
+        -->
         <nav class="categories-nav" hx-target="#dishes-grid" hx-push-url="false">
+            <!-- th:classappend añade la clase 'active' para dar énfasis visual a la categoría seleccionada por defecto -->
             <button class="category-tab-btn" th:classappend="${activeCat == 'entradas' ? 'active' : ''}" 
                     hx-get="/mesero/pedido/catalogo/entradas" onclick="updateCatUI(this)">🥗 Entradas</button>
             <button class="category-tab-btn" th:classappend="${activeCat == 'segundos' ? 'active' : ''}" 
@@ -19,17 +60,22 @@
                     hx-get="/mesero/pedido/catalogo/postres" onclick="updateCatUI(this)">🍰 Postres</button>
         </nav>
 
+        <!-- Cuadrícula para renderizar los platos correspondientes a la categoría seleccionada -->
         <div class="dishes-catalog-container" id="dishes-catalog">
             <div class="dishes-grid" id="dishes-grid">
+                <!-- Inclusión en tiempo de compilación/servidor del catálogo de platos filtrado -->
                 <div th:replace="~{mesero/pedido/catalogo :: lista}"></div>
             </div>
         </div>
 
+        <!-- Panel lateral del resumen del pedido (carrito de compras) -->
         <div class="glass-card order-summary-panel" id="order-summary-panel">
+            <!-- Inclusión en tiempo de compilación/servidor del desglose y totales del pedido -->
             <div th:replace="~{mesero/pedido/carrito :: detalle}"></div>
         </div>
     </div>
 
+    <!-- Script auxiliar del lado del cliente para gestionar la clase visual 'active' de las pestañas -->
     <script>
         function updateCatUI(btn) {
             document.querySelectorAll('.category-tab-btn').forEach(b => b.classList.remove('active'));

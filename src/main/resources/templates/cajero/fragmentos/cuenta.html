@@ -1,30 +1,67 @@
+<!-- 
+  =============================================================================
+  PROYECTO ACADÉMICO - EN SU PUNTO (Detalle de Cuenta Total de Mesa)
+  PROPÓSITO:
+  - Fragmento dinámico que muestra el desglose del pedido de una mesa (platos,
+    cantidades, subtotal, I.G.V.) y provee el formulario para el cobro del monto
+    total de la cuenta o para iniciar la división de la misma.
+  
+  TECNOLOGÍAS EXPLICADAS:
+  1. Thymeleaf:
+     - th:fragment="detalle": Declara este bloque como el fragmento 'detalle'
+       que se carga dinámicamente en el panel lateral del cajero.
+     - th:each: Itera por cada línea de detalle ('${pedido.detalles}').
+     - Expresiones matemáticas: Realiza cálculos directos en la plantilla como
+       '${d.precioUnitario * d.cantidad}' e '${pedido.total - (pedido.total / 1.18)}'
+       para el cálculo del I.G.V. (18%).
+     - th:value: Asigna dinámicamente el ID del pedido al campo oculto.
+  2. HTMX:
+     - hx-post="/cajero/pedidos/cobrar": Envía de forma asíncrona la solicitud de cobro.
+     - hx-target="body" y hx-swap="beforeend": Inserta el comprobante (recibo)
+       resultante directamente en el cuerpo del documento.
+     - th:hx-get: Recupera dinámicamente el formulario modal para dividir la cuenta.
+  3. Contexto de Datos:
+     - ${pedido}: Objeto Pedido (id, total, detalles con plato, cantidad, precioUnitario).
+  =============================================================================
+-->
 <div th:fragment="detalle" class="glass-card cashier-bill-panel" id="bill-panel" style="height: 100%; display: flex; flex-direction: column;">
+    <!-- Thymeleaf th:text: Enlaza el título con el ID de pedido actual -->
     <h3 style="font-size: 1.2rem; margin-bottom: 15px;" th:text="'Cuenta - Pedido #' + ${pedido.id}">Cuenta</h3>
     
+    <!-- Lista de platos consumidos en la mesa -->
     <div style="flex: 1; min-height: 180px; overflow-y: auto; margin-bottom: 15px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 10px; padding-right: 5px;">
+        <!-- Thymeleaf th:each: Genera dinámicamente cada fila de plato consumido -->
         <div th:each="d : ${pedido.detalles}" 
              style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: rgba(255, 255, 255, 0.03); border-radius: 6px; margin-bottom: 6px; border: 1px solid rgba(255, 255, 255, 0.05);">
             <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+                <!-- Cantidad de platos -->
                 <span style="background: var(--accent); color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 0.8rem; flex-shrink: 0;" th:text="${d.cantidad} + 'x'">1x</span>
+                <!-- Nombre del plato -->
                 <span style="color: white; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" th:text="${d.plato.nombre}">Plato</span>
             </div>
+            <!-- Subtotal por plato (precio unitario * cantidad) calculado por Thymeleaf -->
             <span style="color: var(--accent); font-weight: 600; flex-shrink: 0; margin-left: 10px;" th:text="'S/ ' + ${#numbers.formatDecimal(d.precioUnitario * d.cantidad, 1, 2)}">S/ 0.00</span>
         </div>
         <hr style="border-color: rgba(255, 255, 255, 0.1); margin: 10px 0;">
+        <!-- Desglose de Impuestos (18% de IGV extraído matemáticamente en Thymeleaf) -->
         <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:var(--text-secondary);">
             <span>I.G.V (18%):</span>
             <span th:text="'S/ ' + ${#numbers.formatDecimal(pedido.total - (pedido.total / 1.18), 1, 2)}">S/ 0.00</span>
         </div>
     </div>
     
+    <!-- Monto Total Formateado -->
     <h2 style="color:var(--accent); font-size:1.8rem; text-align:right; margin-bottom:15px;" th:text="'S/ ' + ${#numbers.formatDecimal(pedido.total, 1, 2)}">S/ 0.00</h2>
     
+    <!-- Formulario de Cobro del Total usando HTMX AJAX POST -->
     <form hx-post="/cajero/pedidos/cobrar" hx-target="body" hx-swap="beforeend" style="display: flex; flex-direction: column; gap: 10px;">
+        <!-- Thymeleaf th:value: ID del pedido necesario en el cuerpo del request -->
         <input type="hidden" name="pedidoId" th:value="${pedido.id}">
+        <!-- Campos ocultos de efectivo y vuelto modificados por JS al ingresar efectivo recibido -->
         <input type="hidden" name="efectivoRecibido" id="efectivo-recibido-hidden" value="0.00">
         <input type="hidden" name="vuelto" id="vuelto-hidden" value="0.00">
 
-        <!-- Comprobante Type Selector -->
+        <!-- Selector de Tipo de Comprobante -->
         <label style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 2px;">Tipo de Comprobante:</label>
         <div style="display: flex; gap: 8px; margin-bottom: 5px;">
             <input type="radio" name="tipoComprobante" value="boleta" id="c-boleta" checked style="display: none;" onchange="toggleComprobanteFields('boleta')">
@@ -38,7 +75,7 @@
             </label>
         </div>
 
-        <!-- Boleta Fields -->
+        <!-- Campos de Boleta (DNI Opcional) -->
         <div id="boleta-fields" style="padding: 12px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 8px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 5px;">
             <div>
                 <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 3px;">DNI (Opcional):</label>
@@ -50,7 +87,7 @@
             </div>
         </div>
 
-        <!-- Factura Fields -->
+        <!-- Campos de Factura (Obligatorios en caso de seleccionarse Factura) -->
         <div id="factura-fields" style="padding: 12px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 8px; display: none; flex-direction: column; gap: 8px; margin-bottom: 5px;">
             <div>
                 <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 3px;">RUC:</label>
@@ -66,7 +103,7 @@
             </div>
         </div>
 
-        <!-- Payment Method -->
+        <!-- Métodos de Pago -->
         <label style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 2px;">Método de Pago:</label>
         <div class="payment-method-selector" style="margin-bottom: 5px;">
             <input type="radio" name="metodoPago" value="efectivo" id="m-efectivo" checked style="display:none;" onchange="toggleCashCalc(true)">
@@ -79,10 +116,11 @@
             <label for="m-yape" id="lbl-yape" class="payment-method-btn" style="margin-bottom:0;" onclick="updateMethodUI('yape')">Yape/Plin</label>
         </div>
         
-        <!-- Cash Calculator -->
+        <!-- Calculadora Interactiva de Vuelto (Solo para efectivo) -->
         <div id="cash-calculator" style="padding: 12px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 8px; display: flex; flex-direction: column; gap: 8px;">
             <div>
                 <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 3px;">Efectivo Recibido (S/):</label>
+                <!-- Thymeleaf th:data-total: Envía el total a pagar al JS con el formato de decimales esperado -->
                 <input type="number" step="0.01" min="0" id="cash-received" class="form-control" style="width: 100%; padding: 6px 10px; background: var(--bg-primary); border: 1px solid var(--border-color); color: white; border-radius: 4px; font-size: 0.9rem;" placeholder="0.00" 
                        th:data-total="${#numbers.formatDecimal(pedido.total, 1, 2, 'POINT')}"
                        oninput="calculateChange(this.getAttribute('data-total'))">
@@ -96,11 +134,14 @@
         <button type="submit" class="btn btn-success" style="width: 100%; padding: 14px; font-size: 1.05rem; font-weight: bold; margin-top: 5px;">💰 Cobrar Total</button>
     </form>
     
+    <!-- HTMX th:hx-get: Carga dinámicamente el modal para configuración de división de cuenta -->
     <button class="btn btn-secondary" style="width: 100%; padding: 10px; margin-top: 5px;" 
             th:hx-get="'/cajero/pedidos/' + ${pedido.id} + '/dividir/prompt'"
             hx-target="body" hx-swap="beforeend">⚖️ Dividir Cuenta</button>
 
+    <!-- Script de control interactivo local de la vista -->
     <script>
+        // Muestra u oculta la sección de vuelto de efectivo
         function toggleCashCalc(show) {
             document.getElementById('cash-calculator').style.display = show ? 'flex' : 'none';
             if (!show) {
@@ -111,11 +152,15 @@
                 document.getElementById('cash-change').style.color = '#10b981';
             }
         }
+        
+        // Modifica visualmente los botones de método de pago
         function updateMethodUI(method) {
             document.getElementById('lbl-efectivo').classList.toggle('active', method === 'efectivo');
             document.getElementById('lbl-tarjeta').classList.toggle('active', method === 'tarjeta');
             document.getElementById('lbl-yape').classList.toggle('active', method === 'yape');
         }
+        
+        // Modifica la visualización de los formularios adicionales de DNI/RUC
         function toggleComprobanteFields(type) {
             const isBoleta = type === 'boleta';
             document.getElementById('boleta-fields').style.display = isBoleta ? 'flex' : 'none';
@@ -134,6 +179,8 @@
                 rsInput.setAttribute('required', 'required');
             }
         }
+        
+        // Calcula dinámicamente el vuelto basándose en la entrada del usuario
         function calculateChange(totalStr) {
             const total = parseFloat(totalStr) || 0;
             const receivedVal = document.getElementById('cash-received').value;
