@@ -26,35 +26,71 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * CAPA DE NEGOCIO (SERVICE IMPLEMENTATION): GENERACIÓN DE KPIS Y REPORTES PDF CON JASPERREPORTS
+ * 
+ * CONCEPTOS ACADÉMICOS CLAVE:
+ * 1. JasperReports en Spring Boot:
+ *    JasperReports es un potente motor de generación de informes escrito en Java.
+ *    El flujo clásico de trabajo es:
+ *    - Leer la plantilla XML (`reporte_ventas.jrxml`) desde los recursos de la aplicación.
+ *    - Compilar la plantilla en memoria (`JasperCompileManager.compileReport`) para obtener un objeto `JasperReport`.
+ *    - Llenar el reporte (`JasperFillManager.fillReport`) inyectándole parámetros globales (Map) y una fuente de datos (JRDataSource).
+ *    - Exportar el reporte a formato binario PDF (`JasperExportManager.exportReportToPdf`) para enviarlo en la respuesta HTTP.
+ * 
+ * 2. JRMapCollectionDataSource:
+ *    Normalmente, JasperReports se conecta directamente a la base de datos vía JDBC, lo cual acopla las capas.
+ *    Para desacoplarlo y reutilizar la lógica de Spring Data JPA, construimos una lista de mapas (`List<Map<String, ?>>`)
+ *    y la envolvemos en un `JRMapCollectionDataSource`. Así, JasperReports procesa en memoria objetos ya cargados por JPA.
+ * 
+ * 3. Procesamiento funcional con Java Streams:
+ *    Utiliza lambdas y API Stream para ordenar, agrupar y limitar colecciones de datos,
+ *    como en el cálculo del ranking de platos más vendidos o ventas por categoría.
+ */
 @Service
 @RequiredArgsConstructor
 public class ReporteServiceImpl implements ReporteService {
 
     private final PedidoRepository pedidoRepository;
 
+    /**
+     * Calcula los KPIs (Key Performance Indicators) de ventas correspondientes al día actual.
+     * 
+     * @return Map con los indicadores calculados: ingresos, volumen y ticket promedio.
+     */
     @Override
     public Map<String, Object> obtenerKpisDelDia() {
+        // Obtenemos los límites temporales del día de hoy (de 00:00:00.000 a 23:59:59.999)
         LocalDateTime startOfDay = LocalDateTime.of(LocalDate.now(), LocalTime.MIN);
         LocalDateTime endOfDay = LocalDateTime.of(LocalDate.now(), LocalTime.MAX);
 
+        // Obtenemos los pedidos ya cobrados del día
         List<Pedido> pedidosPagados = pedidoRepository.findByEstadoAndFechaPagoBetween("pagado", startOfDay, endOfDay);
 
         BigDecimal ingresosTotales = BigDecimal.ZERO;
         int clientesAtendidos = pedidosPagados.size();
 
+        // Acumulamos el importe total vendido
         for (Pedido p : pedidosPagados) {
             ingresosTotales = ingresosTotales.add(p.getTotal());
         }
 
+        // Estructuramos los resultados
         Map<String, Object> kpis = new HashMap<>();
         kpis.put("ingresosDia", ingresosTotales);
         kpis.put("ordenesCompletadas", clientesAtendidos);
+        // Evitamos división por cero al calcular el ticket promedio
         kpis.put("ticketPromedio", clientesAtendidos > 0 ? ingresosTotales.divide(new BigDecimal(clientesAtendidos), 2, java.math.RoundingMode.HALF_UP) : BigDecimal.ZERO);
         kpis.put("satisfaccion", 95);
 
         return kpis;
     }
 
+    /**
+     * Agrupa e identifica las ventas del día actual según la categoría del plato.
+     * 
+     * @return Map con la lista de categorías y sus respectivos ingresos acumulados.
+     */
     @Override
     public Map<String, Object> obtenerVentasPorCategoria() {
         LocalDateTime startOfDay = LocalDateTime.of(LocalDate.now(), LocalTime.MIN);
@@ -64,6 +100,7 @@ public class ReporteServiceImpl implements ReporteService {
 
         Map<String, BigDecimal> ventasPorCategoria = new HashMap<>();
 
+        // Iteramos los pedidos del día y sus respectivos detalles
         for (Pedido p : pedidosPagados) {
             for (DetallePedido dp : p.getDetalles()) {
                 String cat = dp.getPlato().getCategoria();
@@ -79,6 +116,11 @@ public class ReporteServiceImpl implements ReporteService {
         return response;
     }
 
+    /**
+     * Determina el Top 5 de platos más solicitados en el día de hoy.
+     * 
+     * @return Map que contiene el listado de nombres y cantidades del ranking.
+     */
     @Override
     @Transactional(readOnly = true)
     public Map<String, Object> obtenerTopPlatos() {
@@ -98,6 +140,7 @@ public class ReporteServiceImpl implements ReporteService {
             }
         }
 
+        // Ordenamos los platos por cantidad vendida de forma descendente y limitamos a 5 utilizando Streams
         List<Map<String, Object>> sorted = topMap.values().stream()
                 .sorted((a, b) -> ((Integer) b.get("cantidad")).compareTo((Integer) a.get("cantidad")))
                 .limit(5)
@@ -134,8 +177,15 @@ public class ReporteServiceImpl implements ReporteService {
         return pedidoRepository.findByEstadoAndFechaPagoBetween("pagado", start, end);
     }
 
+    /**
+     * MÉTODOS DE GENERACIÓN DE INFORMES JASPERREPORTS
+     * 
+     * Compila la plantilla, inyecta los parámetros de cabecera y el ranking,
+     * transforma el listado de pedidos a mapas planos e inyecta la fuente de datos.
+     */
     private byte[] generarReporteDesdePedidos(List<Pedido> pedidos, String titulo, String fechaLabel) {
         try {
+            // 1. Estructuramos la lista plana de mapas para la tabla de JasperReports (JRDataSource)
             List<Map<String, ?>> dataSource = new ArrayList<>();
             for (Pedido p : pedidos) {
                 Map<String, Object> row = new HashMap<>();
@@ -149,6 +199,7 @@ public class ReporteServiceImpl implements ReporteService {
                 dataSource.add(row);
             }
 
+            // 2. Calculamos el ranking de platos más vendidos del set de datos filtrados
             Map<Integer, Map<String, Object>> topPlatosMap = new LinkedHashMap<>();
             for (Pedido p : pedidos) {
                 for (DetallePedido dp : p.getDetalles()) {
@@ -168,21 +219,29 @@ public class ReporteServiceImpl implements ReporteService {
                     .limit(5)
                     .collect(Collectors.toList());
 
+            // 3. Empaquetamos parámetros globales del reporte
             Map<String, Object> params = new HashMap<>();
             params.put("TOP_PLATOS", topPlatos);
             params.put("FECHA_REPORTE", fechaLabel);
             params.put("TITULO_REPORTE", titulo);
 
+            // 4. Obtenemos el archivo jrxml desde el classpath
             ClassPathResource resource = new ClassPathResource("reportes/reporte_ventas.jrxml");
             if (!resource.exists()) {
                 throw new RuntimeException("No se encontró el archivo reportes/reporte_ventas.jrxml en el classpath");
             }
             InputStream reportStream = resource.getInputStream();
+            
+            // 5. Compilación del reporte .jrxml en memoria
             JasperReport jasperReport = JasperCompileManager.compileReport(reportStream);
 
+            // 6. Conversión de la lista de mapas a una fuente de datos compatible
             JRDataSource jrDataSource = new JRMapCollectionDataSource(dataSource);
+            
+            // 7. Llenado del reporte: combina plantilla compilada, parámetros y datos
             JasperPrint jasperPrint = JasperFillManager.fillReport(jasperReport, params, jrDataSource);
 
+            // 8. Exportación directa del informe a arreglo de bytes en formato PDF
             return JasperExportManager.exportReportToPdf(jasperPrint);
         } catch (Exception e) {
             throw new RuntimeException("Error al generar reporte PDF: " + e.getMessage(), e);

@@ -26,6 +26,26 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+/**
+ * CONTROLADOR WEB (SPRING MVC + HTMX + JASPERREPORTS): ADMINISTRACIÓN CENTRAL
+ * 
+ * CONCEPTOS ACADÉMICOS CLAVE:
+ * 1. CRUDs de Entidades (Create, Read, Update, Delete):
+ *    Implementa 3 CRUDs completos para Platos, Personal (Usuarios) y Mesas utilizando HTMX de forma asíncrona.
+ *    - @DeleteMapping y @PutMapping son mapeos HTTP semánticos correctos para baja lógica y reactivación.
+ * 
+ * 2. Descarga y Previsualización de JasperReports (PDF):
+ *    Para retornar un archivo binario PDF a través de la web, Spring MVC expone endpoints que devuelven un `ResponseEntity<byte[]>`.
+ *    - HttpHeaders: Configura cabeceras clave:
+ *      - `Content-Type: application/pdf` le indica al navegador que el cuerpo es un documento PDF.
+ *      - `Content-Disposition`:
+ *        - `inline; filename=...`: Fuerza al navegador a previsualizar el PDF dentro de un iframe (usado en la interfaz).
+ *        - `attachment; filename=...`: Fuerza al navegador a descargar directamente el archivo en la computadora del usuario.
+ * 
+ * 3. Filtrado Dinámico y Paginación en Memoria:
+ *    Permite filtrar los resultados históricos por Rango de Fechas e implementa una paginación básica
+ *    para no sobrecargar la vista del administrador.
+ */
 @Controller
 @RequestMapping("/admin")
 @RequiredArgsConstructor
@@ -38,6 +58,10 @@ public class AdminController {
     private final MesaService mesaService;
     private final ModificacionPedidoRepository modificacionRepository;
 
+    /**
+     * Mapea la entrada principal al panel administrativo.
+     * Carga por defecto la pestaña de reportes consolidados del día.
+     */
     @GetMapping
     public String adminPage(Model model, HttpSession session) {
         Usuario u = (Usuario) session.getAttribute("usuarioLogueado");
@@ -47,24 +71,30 @@ public class AdminController {
         return reportesTab(model, u, false);
     }
 
-    // --- REPORTES TAB ---
+    // ====================================================================
+    // --- 1. MÓDULO DE REPORTES Y KPIs ---
+    // ====================================================================
 
+    /**
+     * Carga el reporte diario inicial (ventas de hoy, KPIs y ranking de platos).
+     */
     @GetMapping("/reportes")
     public String reportesTab(Model model, @SessionAttribute("usuarioLogueado") Usuario u, @RequestHeader(value = "HX-Request", required = false) boolean hxRequest) {
         model.addAttribute("usuario", u);
         model.addAttribute("activeTab", "reportes");
         model.addAttribute("contentTemplate", "reportes");
         
-        // KPIs (Hoy)
+        // Carga de KPIs consolidados del día
         model.addAttribute("kpis", reporteService.obtenerKpisDelDia());
         
-        // Ventas por defecto (Hoy)
+        // Ventas de hoy por defecto
         List<Pedido> hoy = reporteService.obtenerHistorialHoy();
         BigDecimal totalVendido = hoy.stream()
                 .map(Pedido::getTotal)
                 .filter(Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         
+        // Lógica de paginación
         int page = 0;
         int size = 10;
         int totalPedidos = hoy.size();
@@ -91,9 +121,13 @@ public class AdminController {
         model.addAttribute("pageSize", size);
         model.addAttribute("tipo", "hoy");
         
+        // HTMX: Si es petición AJAX retornamos solo el fragmento del contenido, si no, el layout completo
         return hxRequest ? "admin/reportes :: content" : "admin/layout";
     }
 
+    /**
+     * Filtra los registros de ventas de acuerdo al tipo seleccionado: hoy, histórico o rango de fechas (HTMX).
+     */
     @GetMapping("/reportes/ventas/filtrar")
     public String filtrarVentas(
             @RequestParam String tipo,
@@ -167,16 +201,22 @@ public class AdminController {
         model.addAttribute("desde", desde);
         model.addAttribute("hasta", hasta);
         
+        // Devuelve el fragmento de la tabla de reportes
         return "admin/reportes/tabla_pedidos :: render(pedidos=${pedidos}, titulo=${titulo}, subtitulo=${subtitulo}, downloadUrl=${downloadUrl}, previewUrl=${previewUrl})";
     }
 
+    /**
+     * Renderiza la tabla de auditoría con las autorizaciones otorgadas por los administradores (HTMX).
+     */
     @GetMapping("/reportes/auditoria")
     public String reporteAuditoriaFragment(Model model) {
         model.addAttribute("modificaciones", modificacionRepository.findAllWithPedidoAndAdmin());
         return "admin/reportes/auditoria";
     }
 
-    // --- PLATOS TAB ---
+    // ====================================================================
+    // --- 2. MANTENIMIENTO CRUD: PLATOS ---
+    // ====================================================================
 
     @GetMapping("/platos")
     public String platosTab(Model model, @SessionAttribute("usuarioLogueado") Usuario u, @RequestHeader(value = "HX-Request", required = false) boolean hxRequest) {
@@ -190,13 +230,13 @@ public class AdminController {
     @GetMapping("/platos/nuevo")
     public String nuevoPlatoForm(Model model) {
         model.addAttribute("plato", new Plato());
-        return "admin/platos/form_modal :: form";
+        return "admin/platos/form_modal :: form"; // Abre modal vacío
     }
 
     @GetMapping("/platos/editar/{id}")
     public String editarPlatoForm(@PathVariable Integer id, Model model) {
         model.addAttribute("plato", platoService.buscarPorId(id));
-        return "admin/platos/form_modal :: form";
+        return "admin/platos/form_modal :: form"; // Abre modal con datos precargados
     }
 
     @PostMapping("/platos/guardar")
@@ -207,11 +247,13 @@ public class AdminController {
 
     @DeleteMapping("/platos/{id}")
     public String eliminarPlato(@PathVariable Integer id, Model model, @SessionAttribute("usuarioLogueado") Usuario u, @RequestHeader(value = "HX-Request", required = false) boolean hxRequest) {
-        platoService.eliminar(id);
+        platoService.eliminar(id); // Ejecuta baja lógica
         return platosTab(model, u, hxRequest);
     }
 
-    // --- PERSONAL TAB ---
+    // ====================================================================
+    // --- 3. MANTENIMIENTO CRUD: PERSONAL (USUARIOS) ---
+    // ====================================================================
 
     @GetMapping("/personal")
     public String personalTab(Model model, @SessionAttribute("usuarioLogueado") Usuario u, @RequestHeader(value = "HX-Request", required = false) boolean hxRequest) {
@@ -241,6 +283,7 @@ public class AdminController {
             existente.setNombre(usuario.getNombre());
             existente.setRol(usuario.getRol());
             existente.setNombreUsuario(usuario.getNombreUsuario());
+            // Si la clave viene vacía en edición, conservamos la clave actual
             if (usuario.getContrasena() != null && !usuario.getContrasena().trim().isEmpty()) {
                 existente.setContrasena(usuario.getContrasena());
             }
@@ -254,17 +297,19 @@ public class AdminController {
 
     @DeleteMapping("/personal/{id}")
     public String eliminarUsuario(@PathVariable Integer id, Model model, @SessionAttribute("usuarioLogueado") Usuario u, @RequestHeader(value = "HX-Request", required = false) boolean hxRequest) {
-        usuarioService.eliminar(id);
+        usuarioService.eliminar(id); // Desactiva al empleado (Baja lógica)
         return personalTab(model, u, hxRequest);
     }
 
     @PutMapping("/personal/{id}/reactivar")
     public String reactivarUsuario(@PathVariable Integer id, Model model, @SessionAttribute("usuarioLogueado") Usuario u, @RequestHeader(value = "HX-Request", required = false) boolean hxRequest) {
-        usuarioService.reactivar(id);
+        usuarioService.reactivar(id); // Vuelve a activar al empleado
         return personalTab(model, u, hxRequest);
     }
 
-    // --- MESAS TAB ---
+    // ====================================================================
+    // --- 4. MANTENIMIENTO CRUD: MESAS ---
+    // ====================================================================
 
     @GetMapping("/mesas")
     public String mesasTab(Model model, @SessionAttribute("usuarioLogueado") Usuario u, @RequestHeader(value = "HX-Request", required = false) boolean hxRequest) {
@@ -301,6 +346,9 @@ public class AdminController {
     @DeleteMapping("/mesas/{id}")
     public String eliminarMesa(@PathVariable Integer id, Model model, @SessionAttribute("usuarioLogueado") Usuario u, @RequestHeader(value = "HX-Request", required = false) boolean hxRequest) {
         try {
+            // Nota académica: Aquí sí intentamos eliminar físicamente.
+            // Si la mesa tiene dependencias (Foreign Key en pedidos), saltará una excepción JDBC.
+            // La capturamos para dar un mensaje amigable indicando la restricción de integridad referencial.
             mesaService.eliminar(id);
             model.addAttribute("successMsg", "La mesa ha sido eliminada exitosamente.");
         } catch (Exception e) {
@@ -309,8 +357,13 @@ public class AdminController {
         return mesasTab(model, u, hxRequest);
     }
 
-    // --- REPORTE PDF DOWNLOADS ---
+    // ====================================================================
+    // --- 5. ENDPOINTS DE EXPORTACIÓN Y DESCARGA DE REPORTES (JASPER) ---
+    // ====================================================================
 
+    /**
+     * Fuerza la descarga directa del PDF diario en la máquina del usuario (Attachment).
+     */
     @GetMapping("/reporte/ventas")
     public ResponseEntity<?> descargarReporteDia() {
         try {
@@ -321,6 +374,9 @@ public class AdminController {
         }
     }
 
+    /**
+     * Fuerza la descarga directa del PDF histórico.
+     */
     @GetMapping("/reporte/historico")
     public ResponseEntity<?> descargarReporteHistorico() {
         try {
@@ -331,6 +387,9 @@ public class AdminController {
         }
     }
 
+    /**
+     * Fuerza la descarga directa del PDF filtrado por rango de fechas.
+     */
     @GetMapping("/reporte/periodo")
     public ResponseEntity<?> descargarReportePeriodo(@RequestParam String desde, @RequestParam String hasta) {
         try {
@@ -343,13 +402,22 @@ public class AdminController {
         }
     }
 
+    /**
+     * Helper para configurar las cabeceras HTTP de DESCARGA (attachment) de archivos PDF.
+     */
     private ResponseEntity<byte[]> responderPdf(byte[] pdf, String filename) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_PDF);
+        // "attachment" le indica al navegador que descargue el archivo directamente en lugar de abrirlo
         headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename);
         return ResponseEntity.ok().headers(headers).body(pdf);
     }
 
+    /**
+     * Endpoint para PREVISUALIZAR el reporte PDF en pantalla (dentro de un iframe HTML).
+     * 
+     * @param tipo Tipo de reporte ('dia', 'historico', 'personalizado').
+     */
     @GetMapping("/reporte/preview/{tipo}")
     public ResponseEntity<byte[]> previsualizarReporte(
             @PathVariable String tipo,
@@ -374,6 +442,7 @@ public class AdminController {
  
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_PDF);
+            // "inline" indica al navegador que intente renderizar el PDF en el visualizador integrado (iframe)
             headers.set(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=preview.pdf");
             return ResponseEntity.ok().headers(headers).body(pdf);
  

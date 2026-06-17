@@ -15,6 +15,21 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.math.BigDecimal;
 
+/**
+ * CONTROLADOR WEB (SPRING MVC + HTMX): MÓDULO DE CAJA Y FACTURACIÓN
+ * 
+ * CONCEPTOS ACADÉMICOS CLAVE:
+ * 1. Mapeo de Cobros y Comprobantes de Pago:
+ *    Este controlador emite representaciones visuales de boletas o facturas tras confirmar la transacción
+ *    con el servicio, pasando la información correspondiente al fragmento de Thymeleaf.
+ * 
+ * 2. Comunicación Asíncrona vía HTMX Triggers (HX-Trigger):
+ *    Cuando un cliente paga su parte en una cuenta dividida, queremos actualizar el listado de fracciones
+ *    restantes en la pantalla de caja sin forzar al cajero a recargar la página.
+ *    - response.setHeader("HX-Trigger", "refresh-split-list"): Envía una cabecera de evento HTTP personalizada.
+ *    HTMX en el navegador escucha este evento y dispara automáticamente una petición AJAX secundaria
+ *    para redibujar el panel de saldos pendientes de forma reactiva.
+ */
 @Controller
 @RequestMapping("/cajero")
 @RequiredArgsConstructor
@@ -23,6 +38,9 @@ public class CajeroController {
     private final MesaService mesaService;
     private final PedidoService pedidoService;
 
+    /**
+     * Carga la página principal del Módulo de Caja (cajero.html) con el mapeo físico de mesas del salón.
+     */
     @GetMapping
     public String cajeroPage(Model model, HttpSession session) {
         Usuario u = (Usuario) session.getAttribute("usuarioLogueado");
@@ -33,6 +51,12 @@ public class CajeroController {
         return "cajero";
     }
 
+    /**
+     * Carga de forma asíncrona el panel de detalle de cuenta en el lado derecho de la pantalla (HTMX).
+     * Distingue si la mesa tiene una cuenta regular o una dividida en fracciones.
+     * 
+     * @param id ID de la mesa seleccionada.
+     */
     @GetMapping("/mesa/{id}/panel")
     public String getMesaPanel(@PathVariable Integer id, Model model) {
         Pedido p = pedidoService.buscarPedidoActivoPorMesa(id);
@@ -56,6 +80,10 @@ public class CajeroController {
         return "cajero/fragmentos/cuenta :: detalle";
     }
 
+    /**
+     * Procesa la facturación regular de la mesa física.
+     * Mapea los datos del cliente, método de pago, calcula vueltos y retorna el comprobante impreso (HTMX).
+     */
     @PostMapping("/pedidos/cobrar")
     public String cobrarPedido(
             @RequestParam Integer pedidoId,
@@ -93,12 +121,18 @@ public class CajeroController {
         return "cajero/fragmentos/recibo :: comprobante";
     }
 
+    /**
+     * Abre el modal para configurar el número de comensales entre los que se dividirá la cuenta.
+     */
     @GetMapping("/pedidos/{id}/dividir/prompt")
     public String promptDividir(@PathVariable Integer id, Model model) {
         model.addAttribute("pedidoId", id);
         return "cajero/fragmentos/dividir_modal :: modal";
     }
 
+    /**
+     * Confirma la división del total de la orden en N fracciones (HTMX POST).
+     */
     @PostMapping("/pedidos/{id}/dividir")
     public String dividirCuenta(@PathVariable Integer id, @RequestParam int nPartes, Model model) {
         List<PagoFraccionado> fracciones = pedidoService.dividirCuenta(id, nPartes);
@@ -114,6 +148,9 @@ public class CajeroController {
         return "cajero/fragmentos/dividida :: detalle";
     }
 
+    /**
+     * Abre el modal para cobrar una fracción de cuenta particular (Cliente X).
+     */
     @GetMapping("/fracciones/{id}/pagar/prompt")
     public String promptPagarFraccion(@PathVariable Integer id, Model model) {
         PagoFraccionado pf = pedidoService.buscarFraccionPorId(id);
@@ -121,6 +158,11 @@ public class CajeroController {
         return "cajero/fragmentos/cobrar_fraccion_modal :: modal";
     }
 
+    /**
+     * Registra el pago asíncrono de una fracción de cuenta (HTMX POST).
+     * Si no es la última fracción, añade la cabecera 'HX-Trigger' para refrescar los saldos en pantalla.
+     * Si es la última fracción, el servicio se encarga de liberar la mesa de forma automática.
+     */
     @PostMapping("/fracciones/{id}/pagar")
     public String pagarFraccion(
             @PathVariable Integer id,
@@ -143,7 +185,6 @@ public class CajeroController {
         String prefix = "boleta".equals(tipoComprobante) ? "B001-" : "F001-";
         String docNum = prefix + String.format("F%05d", pf.getId());
         
-        // Check if all fractions are paid
         List<PagoFraccionado> todas = pedidoService.obtenerFraccionesPorPedido(p.getId());
         boolean todosPagados = todas.stream().allMatch(PagoFraccionado::getPagado);
         
@@ -167,7 +208,6 @@ public class CajeroController {
         model.addAttribute("fraccionMonto", pf.getMonto());
         model.addAttribute("numeroCliente", pf.getNumeroCliente());
         
-        // Trigger background refresh in HTMX if not the last one
         if (!todosPagados) {
             response.setHeader("HX-Trigger", "refresh-split-list");
         }
@@ -175,6 +215,9 @@ public class CajeroController {
         return "cajero/fragmentos/recibo :: comprobante";
     }
 
+    /**
+     * Carga el aviso de mesa liberada con éxito al saldar el 100% de la cuenta.
+     */
     @GetMapping("/notificar/mesa-liberada")
     public String notificarMesaLiberada() {
         return "cajero/fragmentos/notificacion_liberada :: modal";
