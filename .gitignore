@@ -31,3 +31,7 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Academic branch exclusions ###
+*.txt
+prototype-ref/
