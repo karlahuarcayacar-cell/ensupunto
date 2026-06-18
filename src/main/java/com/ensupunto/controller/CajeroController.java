@@ -30,14 +30,14 @@ public class CajeroController {
         
         model.addAttribute("usuario", u);
         model.addAttribute("mesas", mesaService.listarTodas());
-        return "cajero";
+        return "cajero/cajero";
     }
 
     @GetMapping("/mesa/{id}/panel")
     public String getMesaPanel(@PathVariable Integer id, Model model) {
         Pedido p = pedidoService.buscarPedidoActivoPorMesa(id);
         if (p == null) {
-            return "cajero :: #cashier-right-panel"; // Retornar vacío o aviso
+            return "cajero/cajero :: #cashier-right-panel"; // Retornar vacío o aviso
         }
         
         if ("dividido".equals(p.getEstado())) {
