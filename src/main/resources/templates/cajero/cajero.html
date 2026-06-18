@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/header :: head('Cajero Dashboard')}"></head>
+<body>
+    <div class="app-container">
+        <header th:replace="~{fragments/header :: navbar}"></header>
+        
+        <main class="main-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">  
+                <div>
+                    <h1 style="font-size: 1.8rem; color: white;">Punto de Cobro</h1>
+                    <p style="color: var(--text-secondary); font-size: 0.9rem;">Selecciona una mesa para procesar el pago.</p>
+                </div>
+            </div>
+            
+            <div class="cashier-layout">
+                <div class="cashier-tables-view">
+                    <div class="tables-grid">
+                        <div th:each="mesa : ${mesas}" 
+                             class="glass-card table-card" 
+                             th:classappend="'state-' + ${mesa.estado}" 
+                             th:hx-get="'/cajero/mesa/' + ${mesa.id} + '/panel'"
+                             hx-target="#cashier-right-panel"
+                             style="cursor:pointer;">
+                            <div class="table-header">
+                                <span class="table-number" th:text="${mesa.nombre}">Mesa</span>
+                                <span class="badge" th:classappend="${mesa.estado == 'libre' ? 'badge-free' : (mesa.estado == 'esperando_comida' ? 'badge-waiting' : (mesa.estado == 'comiendo' ? 'badge-eating' : 'badge-cooking'))}" 
+                                      th:text="${mesa.estado == 'libre' ? 'Libre' : mesa.estado}">Estado</span>
+                            </div>
+                            <div class="table-footer-actions">
+                                <button th:if="${mesa.estado != 'libre'}" class="btn btn-primary btn-sm">Cobrar Cuenta</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="cashier-right-panel" style="width: 400px; height: 100%; display: flex; flex-direction: column;">
+                    <div class="glass-card cashier-bill-panel" style="justify-content: center; align-items: center; color: var(--text-secondary); height: 100%;">
+                        <p>Selecciona una mesa para ver el detalle</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <th:block th:replace="~{fragments/scripts :: commonScripts}"></th:block>
+</body>
+</html>
